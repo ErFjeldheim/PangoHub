@@ -15,7 +15,12 @@ BEGIN
     COALESCE(NEW.raw_user_meta_data ->> 'role', 'consultant')
   )
   ON CONFLICT (id) DO NOTHING;
-  
+
+  -- Directly update auth.users app_metadata with the role
+  UPDATE auth.users
+  SET raw_app_meta_data = raw_app_meta_data || jsonb_build_object('role', COALESCE(NEW.raw_user_meta_data ->> 'role', 'consultant'))
+  WHERE id = NEW.id;
+
   RETURN NEW;
 END;
 $$;

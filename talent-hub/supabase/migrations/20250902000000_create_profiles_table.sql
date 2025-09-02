@@ -29,10 +29,7 @@ CREATE POLICY "profiles_select_own_or_admin"
   ON public.profiles FOR SELECT
   USING (
     auth.uid() = id OR 
-    EXISTS (
-      SELECT 1 FROM public.profiles 
-      WHERE id = auth.uid() AND role = 'admin'
-    )
+    (current_setting('request.jwt.claims', true)::jsonb ->> 'app_metadata')::jsonb ->> 'role' = 'admin'
   );
 
 CREATE POLICY "profiles_insert_own"
@@ -43,17 +40,11 @@ CREATE POLICY "profiles_update_own_or_admin"
   ON public.profiles FOR UPDATE
   USING (
     auth.uid() = id OR 
-    EXISTS (
-      SELECT 1 FROM public.profiles 
-      WHERE id = auth.uid() AND role = 'admin'
-    )
+    (current_setting('request.jwt.claims', true)::jsonb ->> 'app_metadata')::jsonb ->> 'role' = 'admin'
   );
 
 CREATE POLICY "profiles_delete_admin_only"
   ON public.profiles FOR DELETE
   USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles 
-      WHERE id = auth.uid() AND role = 'admin'
-    )
+    (current_setting('request.jwt.claims', true)::jsonb ->> 'app_metadata')::jsonb ->> 'role' = 'admin'
   );
