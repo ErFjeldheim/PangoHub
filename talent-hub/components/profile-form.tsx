@@ -9,10 +9,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
-import { X, Plus } from "lucide-react"
+import { SkillsManager } from "./SkillsManager"
+import { AvailabilityManager } from "./AvailabilityManager"
 
 interface ProfileFormProps {
   profile: any
@@ -30,29 +29,13 @@ export function ProfileForm({ profile }: ProfileFormProps) {
     linkedin_url: profile.linkedin_url || "",
     github_url: profile.github_url || "",
     portfolio_url: profile.portfolio_url || "",
-    experience_years: profile.experience_years || "",
-    hourly_rate: profile.hourly_rate || "",
-    availability_status: profile.availability_status || "available",
   })
 
-  const [skills, setSkills] = useState<string[]>(profile.skills || [])
-  const [newSkill, setNewSkill] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const supabase = createClient()
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
-  }
-
-  const addSkill = () => {
-    if (newSkill.trim() && !skills.includes(newSkill.trim())) {
-      setSkills([...skills, newSkill.trim()])
-      setNewSkill("")
-    }
-  }
-
-  const removeSkill = (skillToRemove: string) => {
-    setSkills(skills.filter((skill) => skill !== skillToRemove))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -64,9 +47,6 @@ export function ProfileForm({ profile }: ProfileFormProps) {
         .from("profiles")
         .update({
           ...formData,
-          skills,
-          experience_years: formData.experience_years ? Number.parseInt(formData.experience_years) : null,
-          hourly_rate: formData.hourly_rate ? Number.parseFloat(formData.hourly_rate) : null,
         })
         .eq("id", profile.id)
 
@@ -215,78 +195,16 @@ export function ProfileForm({ profile }: ProfileFormProps) {
       <Card>
         <CardHeader>
           <CardTitle>Professional Information</CardTitle>
-          <CardDescription>Your experience and availability</CardDescription>
+          <CardDescription>Your skills and availability</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="experience_years">Years of Experience</Label>
-              <Input
-                id="experience_years"
-                type="number"
-                min="0"
-                max="50"
-                value={formData.experience_years}
-                onChange={(e) => handleInputChange("experience_years", e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="hourly_rate">Hourly Rate ($)</Label>
-              <Input
-                id="hourly_rate"
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="150.00"
-                value={formData.hourly_rate}
-                onChange={(e) => handleInputChange("hourly_rate", e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="availability_status">Availability</Label>
-              <Select
-                value={formData.availability_status}
-                onValueChange={(value) => handleInputChange("availability_status", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="available">Available</SelectItem>
-                  <SelectItem value="busy">Busy</SelectItem>
-                  <SelectItem value="unavailable">Unavailable</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Skills */}
-          <div className="space-y-2">
-            <Label>Skills</Label>
-            <div className="flex flex-wrap gap-2 mb-2">
-              {skills.map((skill) => (
-                <Badge key={skill} variant="secondary" className="flex items-center gap-1">
-                  {skill}
-                  <button type="button" onClick={() => removeSkill(skill)} className="ml-1 hover:text-destructive">
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Add a skill..."
-                value={newSkill}
-                onChange={(e) => setNewSkill(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addSkill())}
-              />
-              <Button type="button" variant="outline" onClick={addSkill}>
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+          <SkillsManager profileId={profile.id} />
         </CardContent>
       </Card>
+      
+      <AvailabilityManager profileId={profile.id} />
+      <ExperienceManager profileId={profile.id} />
+      <EducationManager profileId={profile.id} />
 
       <div className="flex justify-end">
         <Button type="submit" disabled={isLoading}>
@@ -294,5 +212,8 @@ export function ProfileForm({ profile }: ProfileFormProps) {
         </Button>
       </div>
     </form>
+  )
+}
+m>
   )
 }

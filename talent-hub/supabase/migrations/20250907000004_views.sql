@@ -1,25 +1,6 @@
 -- Views you'll want
 
--- v_profiles_with_email (admin-only): join profiles + auth.users.email.
-CREATE VIEW v_profiles_with_email AS
-SELECT
-  p.id,
-  p.first_name,
-  p.last_name,
-  p.title,
-  p.department,
-  p.bio,
-  p.phone,
-  p.location,
-  p.linkedin_url,
-  p.github_url,
-  p.portfolio_url,
-  p.created_at,
-  p.updated_at,
-  p.display_name,
-  u.email
-FROM profiles p
-JOIN auth.users u ON p.id = u.id;
+
 
 -- v_availability_current (for staffing dashboards): next 3–6 months with computed free hours.
 CREATE VIEW v_availability_current AS

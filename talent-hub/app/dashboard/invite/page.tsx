@@ -3,7 +3,6 @@
 import type React from "react";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -22,43 +21,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { createInvitation } from "@/lib/actions/invitations";
 
 export default function InvitePage() {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"consultant" | "admin">("consultant");
   const [isLoading, setIsLoading] = useState(false);
-  const supabase = createClient();
-
-  const generateInviteToken = () => {
-    return Math.random().toString(36).substring(2) + Date.now().toString(36);
-  };
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const token = generateInviteToken();
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
-
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
-      const { error } = await supabase.from("invitations").insert({
-        email,
-        role,
-        invited_by: user.id,
-        token,
-        expires_at: expiresAt.toISOString(),
-      });
-
-      if (error) throw error;
-
-      // In a real app, you'd send an email here
-      const inviteUrl = `${window.location.origin}/auth/signup?token=${token}`;
+      const { inviteUrl } = await createInvitation(email, role);
 
       toast.success("Invitation sent!", {
         description: `Invitation link: ${inviteUrl}`,

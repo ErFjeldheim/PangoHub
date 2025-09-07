@@ -2,7 +2,6 @@
 
 import type React from "react"
 
-import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -10,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useState, useEffect } from "react"
+import { signUpWithInvitation, verifyInvitation } from "@/lib/actions/auth"
 
 export default function SignUpPage() {
   const [email, setEmail] = useState("")
@@ -30,33 +30,31 @@ export default function SignUpPage() {
         setError("Invalid invitation link")
         return
       }
+      // we need to get the email from the url as well, if it is not there, we can't verify
+      const emailFromUrl = searchParams.get('email');
+      if (!emailFromUrl) {
+        setError("Invalid invitation link: missing email");
+        return;
+      }
 
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from("invitations")
-        .select("*")
-        .eq("token", token)
-        .gt("expires_at", new Date().toISOString())
-        .is("accepted_at", null)
-        .single()
+      const { invitation, error } = await verifyInvitation(token, emailFromUrl);
 
-      if (error || !data) {
-        setError("Invalid or expired invitation")
+      if (error || !invitation) {
+        setError(error?.message || "Invalid or expired invitation")
         return
       }
 
-      setInvitation(data)
-      setEmail(data.email)
+      setInvitation(invitation)
+      setEmail(invitation.email)
     }
 
     validateInvitation()
-  }, [token])
+  }, [token, searchParams])
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!invitation) return
 
-    const supabase = createClient()
     setIsLoading(true)
     setError(null)
 
@@ -66,31 +64,22 @@ export default function SignUpPage() {
       return
     }
 
-    try {
-      const { error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/dashboard`,
-          data: {
-            first_name: firstName,
-            last_name: lastName,
-            role: invitation.role,
-          },
-        },
-      })
+    const formData = new FormData();
+    formData.append('token', token || '');
+    formData.append('email', email);
+    formData.append('password', password);
+    formData.append('firstName', firstName);
+    formData.append('lastName', lastName);
 
-      if (signUpError) throw signUpError
+    const { error } = await signUpWithInvitation(formData);
 
-      // Mark invitation as accepted
-      await supabase.from("invitations").update({ accepted_at: new Date().toISOString() }).eq("token", token)
-
-      router.push("/auth/signup-success")
-    } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred")
-    } finally {
-      setIsLoading(false)
+    if (error) {
+        setError(error.message);
+    } else {
+        router.push("/auth/signup-success");
     }
+
+    setIsLoading(false)
   }
 
   if (!invitation && !error) {
@@ -130,6 +119,7 @@ export default function SignUpPage() {
                     <Label htmlFor="firstName">First Name</Label>
                     <Input
                       id="firstName"
+                      name="firstName"
                       type="text"
                       required
                       value={firstName}
@@ -140,6 +130,7 @@ export default function SignUpPage() {
                     <Label htmlFor="lastName">Last Name</Label>
                     <Input
                       id="lastName"
+                      name="lastName"
                       type="text"
                       required
                       value={lastName}
@@ -149,12 +140,13 @@ export default function SignUpPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" value={email} disabled className="bg-muted" />
+                  <Input id="email" name="email" type="email" value={email} disabled className="bg-muted" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="password">Password</Label>
                   <Input
                     id="password"
+                    name="password"
                     type="password"
                     required
                     value={password}

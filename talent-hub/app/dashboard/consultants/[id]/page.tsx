@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Mail, Phone, MapPin, ExternalLink, Calendar, DollarSign, Briefcase } from "lucide-react"
+import { Mail, Phone, MapPin, ExternalLink, Calendar, DollarSign, Briefcase, GraduationCap, Building } from "lucide-react"
 import Link from "next/link"
 
 interface ConsultantDetailPageProps {
@@ -23,30 +23,55 @@ export default async function ConsultantDetailPage({ params }: ConsultantDetailP
   }
 
   // Get current user profile to check permissions
-  const { data: currentProfile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
-
-  if (!currentProfile) {
-    redirect("/auth/login")
-  }
+  const { data: isAdmin } = await supabase.rpc('is_admin', { uid: user.id })
 
   // Get consultant profile
-  const { data: consultant, error } = await supabase.from("profiles").select("*").eq("id", id).single()
+  const { data: consultant, error } = await supabase.from("v_profiles_with_email").select("*").eq("id", id).single()
 
   if (error || !consultant) {
     notFound()
   }
 
   // Check if user can view this profile (admin or own profile)
-  if (currentProfile.role !== "admin" && currentProfile.id !== consultant.id) {
+  if (!isAdmin && user.id !== consultant.id) {
     redirect("/dashboard")
   }
+
+  const { data: skills } = await supabase
+    .from('profile_skills')
+    .select('proficiency, skills(name)')
+    .eq('profile_id', id);
+
+  const { data: experiences } = await supabase
+    .from('experiences')
+    .select('*')
+    .eq('profile_id', id)
+    .order('start_date', { ascending: false });
+
+  const { data: educations } = await supabase
+    .from('educations')
+    .select('*')
+    .eq('profile_id', id)
+    .order('end_year', { ascending: false });
+
+  const { data: availability } = await supabase
+    .from('availability_months')
+    .select('*')
+    .eq('profile_id', id)
+    .gte('month', new Date().toISOString())
+    .order('month')
+    .limit(1);
+  
+  const currentAvailability = availability?.[0];
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "available":
         return "bg-green-500/10 text-green-500 border-green-500/20"
-      case "busy":
+      case "partly":
         return "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"
+      case "busy":
+        return "bg-orange-500/10 text-orange-500 border-orange-500/20"
       case "unavailable":
         return "bg-red-500/10 text-red-500 border-red-500/20"
       default:
@@ -64,8 +89,8 @@ export default async function ConsultantDetailPage({ params }: ConsultantDetailP
           <p className="text-muted-foreground">{consultant.title || "Consultant"}</p>
         </div>
         <div className="flex items-center space-x-4">
-          <Badge className={getStatusColor(consultant.availability_status)}>{consultant.availability_status}</Badge>
-          {currentProfile.id === consultant.id && (
+          {currentAvailability && <Badge className={getStatusColor(currentAvailability.status)}>{currentAvailability.status}</Badge>}
+          {user.id === consultant.id && (
             <Link href="/dashboard/profile">
               <Button>Edit Profile</Button>
             </Link>
@@ -89,22 +114,63 @@ export default async function ConsultantDetailPage({ params }: ConsultantDetailP
             </CardContent>
           </Card>
 
-          {consultant.skills && consultant.skills.length > 0 && (
+          {skills && skills.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle>Skills & Expertise</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2">
-                  {consultant.skills.map((skill, index) => (
+                  {skills.map((skill: any, index) => (
                     <Badge key={index} variant="secondary">
-                      {skill}
+                      {skill.skills.name} (Proficiency: {skill.proficiency})
                     </Badge>
                   ))}
                 </div>
               </CardContent>
             </Card>
           )}
+
+          {experiences && experiences.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Work Experience</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {experiences.map((exp) => (
+                  <div key={exp.id} className="flex space-x-4">
+                    <Building className="h-6 w-6 text-muted-foreground mt-1" />
+                    <div>
+                      <h3 className="font-semibold">{exp.role} at {exp.org}</h3>
+                      <p className="text-sm text-muted-foreground">{new Date(exp.start_date).getFullYear()} - {exp.end_date ? new Date(exp.end_date).getFullYear() : 'Present'}</p>
+                      <p className="text-sm mt-1">{exp.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {educations && educations.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Education</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {educations.map((edu) => (
+                  <div key={edu.id} className="flex space-x-4">
+                    <GraduationCap className="h-6 w-6 text-muted-foreground mt-1" />
+                    <div>
+                      <h3 className="font-semibold">{edu.institution}</h3>
+                      <p className="text-sm text-muted-foreground">{edu.program} ({edu.degree_level})</p>
+                      <p className="text-sm text-muted-foreground">{edu.start_year} - {edu.end_year}</p>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
         </div>
 
         {/* Sidebar */}
@@ -179,41 +245,6 @@ export default async function ConsultantDetailPage({ params }: ConsultantDetailP
                   </a>
                 </div>
               )}
-            </CardContent>
-          </Card>
-
-          {/* Professional Details */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Professional Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {consultant.department && (
-                <div className="flex items-center space-x-3">
-                  <Briefcase className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">{consultant.department}</span>
-                </div>
-              )}
-
-              {consultant.experience_years && (
-                <div className="flex items-center space-x-3">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">{consultant.experience_years} years experience</span>
-                </div>
-              )}
-
-              {consultant.hourly_rate && (
-                <div className="flex items-center space-x-3">
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">${consultant.hourly_rate}/hour</span>
-                </div>
-              )}
-
-              <div className="pt-2 border-t">
-                <p className="text-xs text-muted-foreground">
-                  Joined {new Date(consultant.created_at).toLocaleDateString()}
-                </p>
-              </div>
             </CardContent>
           </Card>
         </div>
