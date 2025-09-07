@@ -2,7 +2,7 @@
 DROP VIEW IF EXISTS v_profiles_with_email;
 
 -- If you need email for admin screens, expose it via a SECURITY DEFINER RPC instead:
-CREATE OR REPLACE FUNCTION public.admin_profiles_with_email()
+CREATE OR REPLACE FUNCTION admin_profiles_with_email()
 RETURNS TABLE (
   id uuid,
   first_name text,

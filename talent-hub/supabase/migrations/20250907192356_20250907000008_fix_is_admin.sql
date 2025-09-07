@@ -14,4 +14,4 @@ REVOKE ALL ON FUNCTION public.is_admin(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.is_admin(uuid) TO anon, authenticated, service_role;
 
 -- (Optional harden admin_members)
-REVOKE ALL ON TABLE public.admin_members FROM PUBLIC, anon, authenticated;
+-- REVOKE ALL ON TABLE public.admin_members FROM PUBLIC, anon, authenticated;

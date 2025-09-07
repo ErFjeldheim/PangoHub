@@ -31,10 +31,11 @@ BEGIN
   )
   ON CONFLICT (id) DO NOTHING;
 
-  -- Optional: keep or drop this; admin rights now come from admin_members
-  UPDATE auth.users
-  SET raw_app_meta_data = raw_app_meta_data || jsonb_build_object('role', COALESCE(NEW.raw_user_meta_data ->> 'role', 'consultant'))
-  WHERE id = NEW.id;
+  -- This is a security risk and the cause of the login error.
+  -- The authenticator role does not have permission to update auth.users.
+  -- UPDATE auth.users
+  -- SET raw_app_meta_data = raw_app_meta_data || jsonb_build_object('role', COALESCE(NEW.raw_user_meta_data ->> 'role', 'consultant'))
+  -- WHERE id = NEW.id;
 
   RETURN NEW;
 END;

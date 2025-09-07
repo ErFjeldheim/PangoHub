@@ -4,30 +4,35 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 -- Users (trigger will auto-create profiles)
 INSERT INTO auth.users (
   instance_id, id, aud, role, email, encrypted_password,
-  email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at
+  email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+  created_at, updated_at,
+  -- 👇 add these four
+  confirmation_token, email_change, email_change_token_new, recovery_token
 )
 VALUES
-  (
-    '00000000-0000-0000-0000-000000000000',
-    '8d2b0f3e-4b1a-4b8a-8f0a-3b1e7b0a9b1c',
-    'authenticated','authenticated','admin@example.com',
-    crypt('password123', gen_salt('bf')),
-    now(),
-    '{"provider":"email","providers":["email"]}',
-    '{"first_name":"Admin","last_name":"User","title":"Administrator","department":"Management"}',
-    now(), now()
-  ),
-  (
-    '00000000-0000-0000-0000-000000000000',
-    '9e0b1f2a-3c4d-5e6f-7a8b-9c0d1e2f3a4b',
-    'authenticated','authenticated','consultant@example.com',
-    crypt('password123', gen_salt('bf')),
-    now(),
-    '{"provider":"email","providers":["email"]}',
-    '{"first_name":"Consultant","last_name":"User","title":"Senior Software Engineer","department":"Engineering"}',
-    now(), now()
-  );
-
+(
+  '00000000-0000-0000-0000-000000000000',
+  '8d2b0f3e-4b1a-4b8a-8f0a-3b1e7b0a9b1c',
+  'authenticated','authenticated','admin@example.com',
+  crypt('password123', gen_salt('bf')),
+  now(),
+  '{"provider":"email","providers":["email"]}',
+  '{"first_name":"Admin","last_name":"User","title":"Administrator","department":"Management"}',
+  now(), now(),
+  -- 👇 set to empty strings
+  '', '', '', ''
+),
+(
+  '00000000-0000-0000-0000-000000000000',
+  '9e0b1f2a-3c4d-5e6f-7a8b-9c0d1e2f3a4b',
+  'authenticated','authenticated','consultant@example.com',
+  crypt('password123', gen_salt('bf')),
+  now(),
+  '{"provider":"email","providers":["email"]}',
+  '{"first_name":"Consultant","last_name":"User","title":"Senior Software Engineer","department":"Engineering"}',
+  now(), now(),
+  '', '', '', ''
+);
 -- Admin role
 INSERT INTO public.admin_members (user_id)
 VALUES ('8d2b0f3e-4b1a-4b8a-8f0a-3b1e7b0a9b1c');
