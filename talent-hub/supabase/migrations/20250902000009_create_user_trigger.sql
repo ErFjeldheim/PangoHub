@@ -1,4 +1,6 @@
--- Drop old trigger & function (safe if absent)
+-- Create profile on auth.users insert + optional department membership
+
+-- Safety: drop any prior version
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 DROP FUNCTION IF EXISTS public.handle_new_user();
 
@@ -9,8 +11,8 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  dep_name text;
-  dep_id uuid;
+  dep_name TEXT;
+  dep_id   UUID;
 BEGIN
   INSERT INTO public.profiles (
     id, first_name, last_name, title, bio, phone, location,
@@ -30,7 +32,7 @@ BEGIN
   )
   ON CONFLICT (id) DO NOTHING;
 
-  -- Optional initial department -> normalized join
+  -- Optional initial department from metadata
   dep_name := NULLIF(trim(NEW.raw_user_meta_data ->> 'department'), '');
   IF dep_name IS NOT NULL THEN
     INSERT INTO public.departments(name) VALUES (dep_name)
@@ -51,5 +53,4 @@ $$;
 
 CREATE TRIGGER on_auth_user_created
 AFTER INSERT ON auth.users
-FOR EACH ROW
-EXECUTE FUNCTION public.handle_new_user();
+FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();

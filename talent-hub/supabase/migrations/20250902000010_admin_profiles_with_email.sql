@@ -1,5 +1,5 @@
--- 20YYYYMMDDHHMMSS_admin_profiles_with_email.sql
-CREATE OR REPLACE FUNCTION admin_profiles_with_email()
+-- Admin-only function to see profile + email (replaces old view that joined auth directly)
+CREATE OR REPLACE FUNCTION public.admin_profiles_with_email()
 RETURNS TABLE (
   id uuid,
   first_name text,
@@ -36,9 +36,9 @@ AS $$
     p.created_at, p.updated_at, p.display_name,
     u.email
   FROM public.profiles p
-  JOIN auth.users u ON p.id = u.id
+  JOIN auth.users u ON u.id = p.id
   WHERE public.is_admin(auth.uid());
 $$;
 
-REVOKE ALL ON FUNCTION admin_profiles_with_email() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION admin_profiles_with_email() TO authenticated, anon;
+REVOKE ALL ON FUNCTION public.admin_profiles_with_email() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.admin_profiles_with_email() TO authenticated, anon;

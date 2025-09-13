@@ -1,20 +1,26 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { createClient } from "@/lib/supabase/client"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { toast } from "sonner"
-import { SkillsManager } from "./SkillsManager"
-import { AvailabilityManager } from "./AvailabilityManager"
+import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
+import { SkillsManager } from "./SkillsManager";
+import { AvailabilityManager } from "./AvailabilityManager";
 
 interface ProfileFormProps {
-  profile: any
+  profile: any;
 }
 
 export function ProfileForm({ profile }: ProfileFormProps) {
@@ -29,18 +35,18 @@ export function ProfileForm({ profile }: ProfileFormProps) {
     linkedin_url: profile.linkedin_url || "",
     github_url: profile.github_url || "",
     portfolio_url: profile.portfolio_url || "",
-  })
+  });
 
-  const [isLoading, setIsLoading] = useState(false)
-  const supabase = createClient()
+  const [isLoading, setIsLoading] = useState(false);
+  const supabase = createClient();
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-  }
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
+    e.preventDefault();
+    setIsLoading(true);
 
     try {
       const { error } = await supabase
@@ -48,21 +54,22 @@ export function ProfileForm({ profile }: ProfileFormProps) {
         .update({
           ...formData,
         })
-        .eq("id", profile.id)
+        .eq("id", profile.id);
 
-      if (error) throw error
+      if (error) throw error;
 
       toast.success("Profile updated!", {
         description: "Your profile has been successfully updated.",
-      })
+      });
     } catch (error) {
       toast.error("Error", {
-        description: error instanceof Error ? error.message : "Failed to update profile",
-      })
+        description:
+          error instanceof Error ? error.message : "Failed to update profile",
+      });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -79,7 +86,9 @@ export function ProfileForm({ profile }: ProfileFormProps) {
               <Input
                 id="first_name"
                 value={formData.first_name}
-                onChange={(e) => handleInputChange("first_name", e.target.value)}
+                onChange={(e) =>
+                  handleInputChange("first_name", e.target.value)
+                }
                 required
               />
             </div>
@@ -163,7 +172,9 @@ export function ProfileForm({ profile }: ProfileFormProps) {
               type="url"
               placeholder="https://linkedin.com/in/yourprofile"
               value={formData.linkedin_url}
-              onChange={(e) => handleInputChange("linkedin_url", e.target.value)}
+              onChange={(e) =>
+                handleInputChange("linkedin_url", e.target.value)
+              }
             />
           </div>
 
@@ -185,7 +196,9 @@ export function ProfileForm({ profile }: ProfileFormProps) {
               type="url"
               placeholder="https://yourportfolio.com"
               value={formData.portfolio_url}
-              onChange={(e) => handleInputChange("portfolio_url", e.target.value)}
+              onChange={(e) =>
+                handleInputChange("portfolio_url", e.target.value)
+              }
             />
           </div>
         </CardContent>
@@ -201,7 +214,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
           <SkillsManager profileId={profile.id} />
         </CardContent>
       </Card>
-      
+
       <AvailabilityManager profileId={profile.id} />
       <ExperienceManager profileId={profile.id} />
       <EducationManager profileId={profile.id} />
@@ -212,8 +225,5 @@ export function ProfileForm({ profile }: ProfileFormProps) {
         </Button>
       </div>
     </form>
-  )
-}
-m>
-  )
+  );
 }
