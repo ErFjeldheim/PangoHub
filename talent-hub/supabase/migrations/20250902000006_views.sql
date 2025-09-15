@@ -49,3 +49,19 @@ SELECT
     LIMIT 1
   ) AS primary_department
 FROM public.profiles p;
+
+
+
+-- Profiles with email 
+CREATE OR REPLACE VIEW public.v_profiles_with_email AS
+SELECT
+  p.id, p.first_name, p.last_name, p.title, p.bio, p.phone, p.location,
+  p.linkedin_url, p.github_url, p.portfolio_url,
+  p.created_at, p.updated_at, p.display_name,
+  u.email
+FROM public.profiles p
+JOIN auth.users u ON u.id = p.id
+WHERE p.id = auth.uid();  -- <-- hard guard
+
+GRANT SELECT ON public.v_profiles_with_email TO authenticated;
+REVOKE ALL ON public.v_profiles_with_email FROM anon;

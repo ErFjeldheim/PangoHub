@@ -18,6 +18,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { SkillsManager } from "./SkillsManager";
 import { AvailabilityManager } from "./AvailabilityManager";
+import { ExperienceManager } from "./ExperienceManager";
+import { EducationManager } from "./EducationManager";
 
 interface ProfileFormProps {
   profile: any;
