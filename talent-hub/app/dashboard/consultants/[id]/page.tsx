@@ -32,10 +32,7 @@ export default async function ConsultantDetailPage({ params }: ConsultantDetailP
     notFound()
   }
 
-  // Check if user can view this profile (admin or own profile)
-  if (!isAdmin && user.id !== consultant.id) {
-    redirect("/dashboard")
-  }
+  
 
   const { data: skills } = await supabase
     .from('profile_skills')
