@@ -88,6 +88,36 @@ export function AvailabilityManager({ profileId }: AvailabilityManagerProps) {
       console.error('Error saving availability:', error);
     } else {
       toast.success(`Availability for ${month} saved`);
+      // Re-fetch data to get updated status
+      const fromDate = new Date();
+      const toDate = new Date();
+      toDate.setMonth(toDate.getMonth() + 5);
+
+      const { data: updatedData, error: fetchError } = await supabase
+        .from('availability_months')
+        .select('*')
+        .eq('profile_id', profileId)
+        .gte('month', fromDate.toISOString().slice(0, 7) + '-01')
+        .lte('month', toDate.toISOString().slice(0, 7) + '-01')
+        .order('month');
+
+      if (fetchError) {
+        console.error('Error re-fetching availability:', fetchError);
+        toast.error('Failed to refresh availability data');
+      } else {
+        const months = Array.from({ length: 6 }, (_, i) => {
+          const d = new Date();
+          d.setDate(1);
+          d.setMonth(d.getMonth() + i);
+          return d.toISOString().slice(0, 7) + '-01';
+        });
+
+        const availabilityData = months.map(month => {
+          const existing = updatedData.find(d => d.month === month);
+          return existing || { month, hours_available: 0, hours_committed: 0, status: 'unavailable' };
+        });
+        setAvailability(availabilityData);
+      }
     }
   };
 

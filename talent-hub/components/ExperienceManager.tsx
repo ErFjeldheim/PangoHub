@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
@@ -16,7 +17,7 @@ interface Experience {
   role: string;
   start_date: string;
   end_date?: string;
-  type: 'job' | 'internship' | 'freelance';
+  type: 'job' | 'contract' | 'volunteer' | 'education' | 'other';
   description?: string;
 }
 
@@ -140,7 +141,18 @@ export function ExperienceManager({ profileId }: ExperienceManagerProps) {
             </div>
             <div className="space-y-2">
                 <Label>Type</Label>
-                {/* Implement a Select component for type */}
+                <Select value={currentExperience.type} onValueChange={(value: 'job' | 'contract' | 'volunteer' | 'education' | 'other') => setCurrentExperience({...currentExperience, type: value})}>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="job">Job</SelectItem>
+                        <SelectItem value="contract">Contract</SelectItem>
+                        <SelectItem value="volunteer">Volunteer</SelectItem>
+                        <SelectItem value="education">Education</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                </Select>
             </div>
             <div className="space-y-2">
                 <Label>Description</Label>

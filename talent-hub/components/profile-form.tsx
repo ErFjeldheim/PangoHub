@@ -30,7 +30,6 @@ export function ProfileForm({ profile }: ProfileFormProps) {
     first_name: profile.first_name || "",
     last_name: profile.last_name || "",
     title: profile.title || "",
-    department: profile.department || "",
     bio: profile.bio || "",
     phone: profile.phone || "",
     location: profile.location || "",
@@ -115,15 +114,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="department">Department</Label>
-            <Input
-              id="department"
-              placeholder="e.g., Engineering, Design, Marketing"
-              value={formData.department}
-              onChange={(e) => handleInputChange("department", e.target.value)}
-            />
-          </div>
+          
 
           <div className="space-y-2">
             <Label htmlFor="bio">Bio</Label>

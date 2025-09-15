@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Plus, X } from 'lucide-react';
 
@@ -126,7 +127,19 @@ export function EducationManager({ profileId }: EducationManagerProps) {
             </div>
             <div className="space-y-2">
                 <Label>Degree Level</Label>
-                <Input value={currentEducation.degree_level || ''} onChange={(e) => setCurrentEducation({...currentEducation, degree_level: e.target.value})} />
+                <Select value={currentEducation.degree_level || ''} onValueChange={(value) => setCurrentEducation({...currentEducation, degree_level: value})}>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Select degree level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="High School">High School</SelectItem>
+                        <SelectItem value="Associate Degree">Associate Degree</SelectItem>
+                        <SelectItem value="Bachelor's Degree">Bachelor's Degree</SelectItem>
+                        <SelectItem value="Master's Degree">Master's Degree</SelectItem>
+                        <SelectItem value="Doctorate">Doctorate</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
