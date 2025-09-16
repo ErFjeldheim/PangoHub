@@ -15,9 +15,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { SkillsManager } from "./SkillsManager";
 import { AvailabilityManager } from "./AvailabilityManager";
+import { ExperienceManager } from "./ExperienceManager";
+import { EducationManager } from "./EducationManager";
 
 interface ProfileFormProps {
   profile: any;
@@ -28,7 +31,6 @@ export function ProfileForm({ profile }: ProfileFormProps) {
     first_name: profile.first_name || "",
     last_name: profile.last_name || "",
     title: profile.title || "",
-    department: profile.department || "",
     bio: profile.bio || "",
     phone: profile.phone || "",
     location: profile.location || "",
@@ -38,6 +40,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
   });
 
   const [isLoading, setIsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("basic");
   const supabase = createClient();
 
   const handleInputChange = (field: string, value: string) => {
@@ -72,158 +75,186 @@ export function ProfileForm({ profile }: ProfileFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Basic Information */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Basic Information</CardTitle>
-          <CardDescription>Your personal and contact details</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="first_name">First Name</Label>
-              <Input
-                id="first_name"
-                value={formData.first_name}
-                onChange={(e) =>
-                  handleInputChange("first_name", e.target.value)
-                }
-                required
-              />
+    <div className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="basic">Basic & Contact</TabsTrigger>
+          <TabsTrigger value="professional">Professional</TabsTrigger>
+          <TabsTrigger value="availability">Availability</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="basic" className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Basic Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Basic Information</CardTitle>
+                <CardDescription>
+                  Your personal and contact details
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="first_name">First Name</Label>
+                    <Input
+                      id="first_name"
+                      value={formData.first_name}
+                      onChange={(e) =>
+                        handleInputChange("first_name", e.target.value)
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="last_name">Last Name</Label>
+                    <Input
+                      id="last_name"
+                      value={formData.last_name}
+                      onChange={(e) =>
+                        handleInputChange("last_name", e.target.value)
+                      }
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="title">Job Title</Label>
+                  <Input
+                    id="title"
+                    placeholder="e.g., Senior Software Engineer"
+                    value={formData.title}
+                    onChange={(e) => handleInputChange("title", e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="bio">Bio</Label>
+                  <Textarea
+                    id="bio"
+                    placeholder="Tell us about yourself, your expertise, and what you're passionate about..."
+                    value={formData.bio}
+                    onChange={(e) => handleInputChange("bio", e.target.value)}
+                    rows={4}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Contact Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Contact Information</CardTitle>
+                <CardDescription>How people can reach you</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone</Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="95323456"
+                      value={formData.phone}
+                      onChange={(e) =>
+                        handleInputChange("phone", e.target.value)
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="location">Location</Label>
+                    <Input
+                      id="location"
+                      placeholder="Trondheim"
+                      value={formData.location}
+                      onChange={(e) =>
+                        handleInputChange("location", e.target.value)
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="linkedin_url">LinkedIn URL</Label>
+                  <Input
+                    id="linkedin_url"
+                    type="url"
+                    placeholder="https://linkedin.com/in/yourprofile"
+                    value={formData.linkedin_url}
+                    onChange={(e) =>
+                      handleInputChange("linkedin_url", e.target.value)
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="github_url">GitHub URL</Label>
+                  <Input
+                    id="github_url"
+                    type="url"
+                    placeholder="https://github.com/yourusername"
+                    value={formData.github_url}
+                    onChange={(e) =>
+                      handleInputChange("github_url", e.target.value)
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="portfolio_url">Portfolio URL</Label>
+                  <Input
+                    id="portfolio_url"
+                    type="url"
+                    placeholder="https://yourportfolio.com"
+                    value={formData.portfolio_url}
+                    onChange={(e) =>
+                      handleInputChange("portfolio_url", e.target.value)
+                    }
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="flex justify-end">
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? "Saving..." : "Save Basic Info"}
+              </Button>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="last_name">Last Name</Label>
-              <Input
-                id="last_name"
-                value={formData.last_name}
-                onChange={(e) => handleInputChange("last_name", e.target.value)}
-                required
-              />
-            </div>
-          </div>
+          </form>
+        </TabsContent>
 
-          <div className="space-y-2">
-            <Label htmlFor="title">Job Title</Label>
-            <Input
-              id="title"
-              placeholder="e.g., Senior Software Engineer"
-              value={formData.title}
-              onChange={(e) => handleInputChange("title", e.target.value)}
-            />
-          </div>
+        <TabsContent value="professional" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Professional Information</CardTitle>
+              <CardDescription>
+                Your skills, experience, and education
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Skills</h3>
+                <SkillsManager profileId={profile.id} />
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="department">Department</Label>
-            <Input
-              id="department"
-              placeholder="e.g., Engineering, Design, Marketing"
-              value={formData.department}
-              onChange={(e) => handleInputChange("department", e.target.value)}
-            />
-          </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Work Experience</h3>
+                <ExperienceManager profileId={profile.id} />
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="bio">Bio</Label>
-            <Textarea
-              id="bio"
-              placeholder="Tell us about yourself, your expertise, and what you're passionate about..."
-              value={formData.bio}
-              onChange={(e) => handleInputChange("bio", e.target.value)}
-              rows={4}
-            />
-          </div>
-        </CardContent>
-      </Card>
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Education</h3>
+                <EducationManager profileId={profile.id} />
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      {/* Contact Information */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Contact Information</CardTitle>
-          <CardDescription>How people can reach you</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone</Label>
-              <Input
-                id="phone"
-                type="tel"
-                placeholder="+1 (555) 123-4567"
-                value={formData.phone}
-                onChange={(e) => handleInputChange("phone", e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="location">Location</Label>
-              <Input
-                id="location"
-                placeholder="e.g., San Francisco, CA"
-                value={formData.location}
-                onChange={(e) => handleInputChange("location", e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="linkedin_url">LinkedIn URL</Label>
-            <Input
-              id="linkedin_url"
-              type="url"
-              placeholder="https://linkedin.com/in/yourprofile"
-              value={formData.linkedin_url}
-              onChange={(e) =>
-                handleInputChange("linkedin_url", e.target.value)
-              }
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="github_url">GitHub URL</Label>
-            <Input
-              id="github_url"
-              type="url"
-              placeholder="https://github.com/yourusername"
-              value={formData.github_url}
-              onChange={(e) => handleInputChange("github_url", e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="portfolio_url">Portfolio URL</Label>
-            <Input
-              id="portfolio_url"
-              type="url"
-              placeholder="https://yourportfolio.com"
-              value={formData.portfolio_url}
-              onChange={(e) =>
-                handleInputChange("portfolio_url", e.target.value)
-              }
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Professional Information */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Professional Information</CardTitle>
-          <CardDescription>Your skills and availability</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <SkillsManager profileId={profile.id} />
-        </CardContent>
-      </Card>
-
-      <AvailabilityManager profileId={profile.id} />
-      <ExperienceManager profileId={profile.id} />
-      <EducationManager profileId={profile.id} />
-
-      <div className="flex justify-end">
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? "Saving..." : "Save Profile"}
-        </Button>
-      </div>
-    </form>
+        <TabsContent value="availability" className="space-y-6">
+          <AvailabilityManager profileId={profile.id} />
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }

@@ -12,6 +12,7 @@ export default async function DashboardLayout({
 
   console.log("[DashboardLayout] User:", user);
   console.log("[DashboardLayout] Profile:", profile);
+  console.log("[DashboardLayout] Profile.role:", profile?.role);
 
   return (
     <div className="flex h-screen bg-background">

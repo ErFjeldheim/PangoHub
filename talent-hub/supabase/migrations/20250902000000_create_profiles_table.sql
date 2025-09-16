@@ -12,7 +12,6 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   portfolio_url TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  -- nice display field
   display_name TEXT GENERATED ALWAYS AS (
     trim(both ' ' from coalesce(first_name,'') || ' ' || coalesce(last_name,''))
   ) STORED

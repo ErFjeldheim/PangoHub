@@ -28,5 +28,14 @@ export async function getProfile() {
     redirect('/auth/login'); // Redirect if no profile is found
   }
 
-  return { user, profile };
+  const { data: isAdmin, error: isAdminError } = await supabase.rpc('is_admin', { uid: user.id });
+
+  if (isAdminError) {
+    console.error("[getProfile Server Action] Error checking admin status:", isAdminError);
+    // Decide if you want to redirect or just default to a non-admin role
+  }
+
+  const role = isAdmin ? 'admin' : 'consultant';
+
+  return { user, profile: { ...profile, role } };
 }
