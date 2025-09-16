@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Users, UserPlus, Settings, BarChart3, Home, LogOut, User } from "lucide-react"
+import { Users, UserPlus, Settings, BarChart3, Home, LogOut, User, Building } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
@@ -44,6 +44,12 @@ export function DashboardSidebar({ user, profile }: DashboardSidebarProps) {
     },
     ...(profile.role === "admin"
       ? [
+          {
+            name: "Departments",
+            href: "/dashboard/departments",
+            icon: Building,
+            current: pathname === "/dashboard/departments",
+          },
           {
             name: "Invite Users",
             href: "/dashboard/invite",

@@ -1,152 +1,311 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Badge } from '@/components/ui/badge';
-import { X, ChevronsUpDown } from 'lucide-react';
-import { Slider } from '@/components/ui/slider';
-import { Label } from '@/components/ui/label';
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
+import { X, Plus } from "lucide-react";
 
-interface Skill {
-  id: string;
-  name: string;
-}
-
-interface ProfileSkill {
-  skill_id: string;
-  proficiency: number;
-  name: string;
-}
+import {
+  getAllSkills,
+  getProfileSkills,
+  findSkillByName,
+  addProfileSkill,
+  createSkill,
+  removeProfileSkill as saRemoveProfileSkill,
+  updateProfileSkillProficiency as saUpdateProficiency,
+  type Skill,
+  type ProfileSkill,
+  // createSkill, // <- available if you later add an "Add & create" flow
+} from "@/app/actions/skills";
 
 interface SkillsManagerProps {
   profileId: string;
 }
 
 export function SkillsManager({ profileId }: SkillsManagerProps) {
-  const supabase = createClient();
-  const [skills, setSkills] = useState<Skill[]>([]);
+  const [allSkills, setAllSkills] = useState<Skill[]>([]);
   const [profileSkills, setProfileSkills] = useState<ProfileSkill[]>([]);
-  const [open, setOpen] = useState(false);
+  const [newSkill, setNewSkill] = useState("");
+  const [inputError, setInputError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const [isPending, startTransition] = useTransition();
+  const [adding, setAdding] = useState(false);
+  const [removing, setRemoving] = useState<string | null>(null);
+  const [updating, setUpdating] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+
+  const skillsByLowerName = useMemo(() => {
+    const map = new Map<string, Skill>();
+    for (const s of allSkills) map.set(s.name.toLowerCase(), s);
+    return map;
+  }, [allSkills]);
+
   useEffect(() => {
-    async function fetchData() {
-      setIsLoading(true);
-      // Fetch all canonical skills
-      const { data: skillsData, error: skillsError } = await supabase.from('skills').select('id, name');
-      if (skillsError) console.error('Error fetching skills:', skillsError);
-      else setSkills(skillsData);
-
-      // Fetch user's skills
-      const { data: profileSkillsData, error: profileSkillsError } = await supabase
-        .from('profile_skills')
-        .select('skill_id, proficiency, skills(name)')
-        .eq('profile_id', profileId);
-
-      if (profileSkillsError) console.error('Error fetching profile skills:', profileSkillsError);
-      else {
-        const formattedSkills = profileSkillsData.map((ps: any) => ({
-          skill_id: ps.skill_id,
-          proficiency: ps.proficiency,
-          name: ps.skills.name,
-        }));
-        setProfileSkills(formattedSkills);
+    setIsLoading(true);
+    startTransition(async () => {
+      try {
+        const [skills, pskills] = await Promise.all([
+          getAllSkills(),
+          getProfileSkills(profileId),
+        ]);
+        setAllSkills(skills);
+        setProfileSkills(pskills);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
+    });
+  }, [profileId]);
+
+  // under your other useMemos/state
+  const filteredSkills = useMemo(() => {
+    const q = newSkill.trim().toLowerCase();
+    if (!q) return [];
+    const selected = new Set(profileSkills.map((ps) => ps.skill_id));
+    return allSkills
+      .filter((s) => s.name.toLowerCase().includes(q) && !selected.has(s.id))
+      .slice(0, 8);
+  }, [newSkill, allSkills, profileSkills]);
+
+  const attachExistingSkill = async (skill: Skill) => {
+    setInputError(null);
+    setAdding(true);
+    try {
+      if (profileSkills.some((ps) => ps.skill_id === skill.id)) {
+        setNewSkill("");
+        return;
+      }
+      const added = await addProfileSkill({
+        profileId,
+        skillId: skill.id,
+        proficiency: 3,
+      });
+      setProfileSkills((prev) => [...prev, added]);
+      setNewSkill("");
+    } catch (e) {
+      console.error(e);
+      setInputError("Could not add skill.");
+    } finally {
+      setAdding(false);
     }
-    fetchData();
-  }, [profileId, supabase]);
+  };
 
-  const addSkill = async (skill: Skill) => {
-    if (profileSkills.some((ps) => ps.skill_id === skill.id)) return;
+  const addSkill = async () => {
+    const raw = newSkill.trim();
+    if (!raw) return;
 
-    const newProfileSkill = { profile_id: profileId, skill_id: skill.id, proficiency: 3 };
-    const { error } = await supabase.from('profile_skills').insert(newProfileSkill);
+    setInputError(null);
+    setAdding(true);
+    try {
+      // 1) Only attach if it already exists (no auto-create)
+      let skill = skillsByLowerName.get(raw.toLowerCase());
+      if (!skill) {
+        const found = await findSkillByName(raw);
+        skill = found ?? undefined; // normalize null to undefined
+      }
+      if (!skill) {
+        setInputError(`No existing skill named "${raw}".`);
+        return;
+      }
 
-    if (error) {
-      console.error('Error adding skill:', error);
-    } else {
-      setProfileSkills([...profileSkills, { ...newProfileSkill, name: skill.name }]);
+      // 2) Already attached?
+      if (profileSkills.some((ps) => ps.skill_id === skill!.id)) {
+        setNewSkill("");
+        return;
+      }
+
+      // 3) Attach with default proficiency
+      const added = await addProfileSkill({
+        profileId,
+        skillId: skill.id,
+        proficiency: 3,
+      });
+
+      setProfileSkills((prev) => [...prev, added]);
+      setNewSkill("");
+    } catch (e) {
+      console.error(e);
+      setInputError("Could not add skill.");
+    } finally {
+      setAdding(false);
     }
-    setOpen(false);
+  };
+
+  const createAndAttach = async () => {
+    const raw = newSkill.trim();
+    if (!raw) return;
+    setInputError(null);
+    setCreating(true);
+    try {
+      // double-check it doesn't already exist
+      const existing = await findSkillByName(raw);
+      const skill = existing ?? (await createSkill(raw)); // explicit create
+
+      // attach if not already attached
+      if (!profileSkills.some((ps) => ps.skill_id === skill.id)) {
+        const added = await addProfileSkill({
+          profileId,
+          skillId: skill.id,
+          proficiency: 3,
+        });
+        setProfileSkills((prev) => [...prev, added]);
+      }
+      setNewSkill("");
+    } catch (e: any) {
+      // surface unique constraint nicely if two people create same name
+      const message =
+        typeof e?.message === "string" && e.message.includes("duplicate")
+          ? "Skill already exists."
+          : "Could not create skill.";
+      setInputError(message);
+      console.error(e);
+    } finally {
+      setCreating(false);
+    }
   };
 
   const removeSkill = async (skillId: string) => {
-    const { error } = await supabase.from('profile_skills').delete().match({ profile_id: profileId, skill_id: skillId });
-    if (error) {
-      console.error('Error removing skill:', error);
-    } else {
-      setProfileSkills(profileSkills.filter((ps) => ps.skill_id !== skillId));
+    setRemoving(skillId);
+    try {
+      await saRemoveProfileSkill({ profileId, skillId });
+      setProfileSkills((prev) => prev.filter((ps) => ps.skill_id !== skillId));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setRemoving(null);
     }
   };
 
   const updateProficiency = async (skillId: string, proficiency: number) => {
-    const { error } = await supabase.from('profile_skills').update({ proficiency }).match({ profile_id: profileId, skill_id: skillId });
-    if (error) {
-      console.error('Error updating proficiency:', error);
-    } else {
-      setProfileSkills(profileSkills.map((ps) => (ps.skill_id === skillId ? { ...ps, proficiency } : ps)));
+    setUpdating(skillId);
+    try {
+      await saUpdateProficiency({ profileId, skillId, proficiency });
+      setProfileSkills((prev) =>
+        prev.map((ps) =>
+          ps.skill_id === skillId ? { ...ps, proficiency } : ps
+        )
+      );
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setUpdating(null);
     }
   };
 
-  if (isLoading) {
-    return <div>Loading skills...</div>;
-  }
+  if (isLoading) return <div>Loading skills...</div>;
 
   return (
     <div className="space-y-4">
-        <Label>Skills</Label>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between">
-            Add a skill...
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-          <Command>
-            <CommandInput placeholder="Search skill..." />
-            <CommandEmpty>No skill found.</CommandEmpty>
-            <CommandGroup>
-              {skills.map((skill) => (
-                <CommandItem
-                  key={skill.id}
-                  onSelect={() => addSkill(skill)}
-                  disabled={profileSkills.some((ps) => ps.skill_id === skill.id)}
-                >
-                  {skill.name}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </Command>
-        </PopoverContent>
-      </Popover>
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Input
+            placeholder="Add a skill..."
+            value={newSkill}
+            onChange={(e) => {
+              setNewSkill(e.target.value);
+              if (inputError) setInputError(null);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") addSkill();
+            }}
+            disabled={adding || isPending}
+          />
 
-      <div className="space-y-4">
-        {profileSkills.map((ps) => (
-          <div key={ps.skill_id} className="p-4 border rounded-lg">
-            <div className="flex justify-between items-center mb-2">
-              <Badge variant="secondary">{ps.name}</Badge>
-              <Button variant="ghost" size="icon" onClick={() => removeSkill(ps.skill_id)}>
-                <X className="h-4 w-4" />
-              </Button>
+          {filteredSkills.length > 0 && (
+            <div className="absolute z-20 mt-1 w-full rounded-md border bg-background shadow">
+              {filteredSkills.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  className="w-full text-left px-3 py-2 hover:bg-accent hover:text-accent-foreground"
+                  onClick={() => attachExistingSkill(s)}
+                >
+                  {s.name}
+                </button>
+              ))}
             </div>
-            <div className="space-y-2">
-                <Label>Proficiency: {ps.proficiency}</Label>
-                <Slider
-                    defaultValue={[ps.proficiency]}
-                    min={1}
-                    max={5}
-                    step={1}
-                    onValueCommit={(value) => updateProficiency(ps.skill_id, value[0])}
-                />
-            </div>
+          )}
+        </div>
+        {filteredSkills.length === 0 && newSkill.trim() && (
+          <div className="absolute z-20 mt-10 w-half rounded-md border bg-background shadow">
+            <button
+              type="button"
+              className="w-full text-left px-3 py-2 hover:bg-accent hover:text-accent-foreground"
+              onClick={createAndAttach}
+              disabled={creating || adding || isPending}
+            >
+              Create “{newSkill.trim()}” and add to your skills
+            </button>
           </div>
-        ))}
+        )}
+
+        <Button onClick={addSkill} size="sm" disabled={adding || isPending}>
+          <Plus className="h-4 w-4" />
+        </Button>
       </div>
+
+      {inputError && (
+        <p className="text-sm text-destructive -mt-2">{inputError}</p>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        {profileSkills.map((ps) => (
+          <Badge
+            key={ps.skill_id}
+            variant="secondary"
+            className="flex items-center gap-1"
+            title={`Proficiency: ${ps.proficiency}`}
+          >
+            {ps.name}
+            <span className="text-muted-foreground ml-1">
+              ({ps.proficiency})
+            </span>
+            <button
+              onClick={() => removeSkill(ps.skill_id)}
+              className="ml-1 hover:bg-destructive/20 rounded-full p-0.5"
+              disabled={removing === ps.skill_id || isPending}
+              aria-label={`Remove ${ps.name}`}
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </Badge>
+        ))}
+        {profileSkills.length === 0 && (
+          <span className="text-sm text-muted-foreground">
+            No skills added yet.
+          </span>
+        )}
+      </div>
+
+      {profileSkills.length > 0 && (
+        <div className="space-y-3">
+          {profileSkills.map((ps) => (
+            <div
+              key={`slider-${ps.skill_id}`}
+              className="rounded-lg border p-3"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <Label className="font-medium">{ps.name}</Label>
+                <span className="text-sm text-muted-foreground">
+                  Proficiency:{" "}
+                  <span className="font-medium">{ps.proficiency}</span>
+                </span>
+              </div>
+              <Slider
+                defaultValue={[ps.proficiency]}
+                min={1}
+                max={5}
+                step={1}
+                onValueCommit={(v) => updateProficiency(ps.skill_id, v[0])}
+                disabled={updating === ps.skill_id || isPending}
+              />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

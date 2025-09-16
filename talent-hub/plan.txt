@@ -1,0 +1,43 @@
+ Core Functionality
+
+   * Talent Hub/Consultant Directory: A platform for managing consultant profiles,
+     skills, availability, and project assignments.
+   * User Roles: admin and consultant roles with different levels of access.
+   * Authentication: Supabase-powered authentication with email/password and
+     invitation-based sign-ups.
+   * Rich Profiles: Detailed user profiles with contact information, social links,
+     and professional details.
+   * Skills Management: A system for tracking skills, proficiency, and interests.
+   * Departments: Organization of consultants into departments.
+   * Availability: Monthly availability tracking for consultants.
+   * Projects and Clients: Tracking of clients, projects, and consultant
+     assignments.
+   * Search: Full-text search for finding consultants.
+   * Admin Dashboard: Admin-specific views and functions for platform management.
+
+  Missing Features & Development Plan
+
+  While the backend is quite robust, the frontend seems to be lagging. Here's a
+  development plan to bridge that gap:
+
+   1. Department Management UI: The backend supports departments, but there's no UI
+      for admins to manage them. I'll create the necessary pages and components for
+      creating, editing, and managing departments, including assigning leaders and
+      viewing members.
+   2. Client and Project Management UI: Similar to departments, the UI for managing
+      clients and projects is missing. I'll build the interface for admins to create,
+      edit, and assign consultants to projects.
+   3. Admin Dashboard Enhancements: The current admin dashboard is likely a
+      placeholder. I'll enhance the analytics page with more meaningful data and add
+      a section for managing user invitations.
+   4. Improved Consultant Profile View: I'll expand the consultant profile page to
+      display all relevant information, including skills, projects, availability, and
+      department details. I'll also add a profile editing feature.
+   5. Dynamic Dashboard Home Page: The main dashboard page will be made more dynamic
+      and personalized. Consultants will see their current projects and availability,
+      while admins will get a high-level overview of the platform's activity.
+   6. Refined Skill Management: I'll improve the skill management interface and, if
+      needed, add a feature for admins to manage the canonical list of skills.
+
+  I will now begin with the first item on the plan: Implement Department
+  Management. I'll start by creating the necessary UI and components.
