@@ -4,48 +4,49 @@ import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { createHash } from "crypto";
 
+// app/actions/invitations.ts
 export async function createInvitation(
   email: string,
   role: "consultant" | "admin"
 ) {
   const supabase = await createClient();
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) {
-    throw new Error("Not authenticated");
-  }
+  if (!user) throw new Error("Not authenticated");
 
-  const token =
-    Math.random().toString(36).substring(2) + Date.now().toString(36);
+  const cleanEmail = email.trim();
+  const token = Math.random().toString(36).slice(2) + Date.now().toString(36);
   const tokenHash = createHash("sha256").update(token).digest("hex");
 
   const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
+  expiresAt.setDate(expiresAt.getDate() + 7);
 
-  const { data, error } = await supabase
-    .from("invitations")
-    .insert({
-      email,
-      role,
-      invited_by: user.id,
-      token_hash: tokenHash,
-      expires_at: expiresAt.toISOString(),
-    })
-    .select();
+  const { error } = await supabase.from("invitations").insert({
+    email: cleanEmail,
+    role,
+    invited_by: user.id,
+    token_hash: tokenHash,
+    expires_at: expiresAt.toISOString(),
+  });
 
   if (error) {
+    if ((error as any).code === "23505") {
+      throw new Error("That email already has a pending invitation.");
+    }
     console.error("Error creating invitation:", error);
     throw new Error("Failed to create invitation");
   }
 
-  // In a real app, you'd send an email here with the plain `token`
-  const inviteUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/auth/signup?token=${token}`;
+  // ✅ include email param (what your SignUpPage expects)
+  const inviteUrl =
+    `${process.env.NEXT_PUBLIC_BASE_URL}` +
+    `/auth/signup?token=${encodeURIComponent(token)}` +
+    `&email=${encodeURIComponent(cleanEmail)}`;
 
-  return {
-    inviteUrl,
-  };
+  console.log("invite url", inviteUrl);
+
+  return { inviteUrl };
 }
 
 export async function getInvitations() {
@@ -59,7 +60,10 @@ export async function getInvitations() {
       role,
       created_at,
       expires_at,
-      invited_by:profiles (first_name, last_name)
+      invited_by:profiles (
+        first_name,
+        last_name
+      )
     `
     )
     .is("accepted_at", null)
@@ -69,7 +73,6 @@ export async function getInvitations() {
     console.error("Error fetching invitations:", error);
     throw new Error("Failed to fetch invitations");
   }
-
   return data;
 }
 

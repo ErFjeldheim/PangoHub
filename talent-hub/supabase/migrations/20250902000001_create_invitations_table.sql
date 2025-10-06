@@ -14,3 +14,18 @@ CREATE TABLE IF NOT EXISTS public.invitations (
 );
 
 ALTER TABLE public.invitations ENABLE ROW LEVEL SECURITY;
+
+
+-- Add FK to profiles instead of auth.users
+ALTER TABLE public.invitations
+  DROP CONSTRAINT IF EXISTS invitations_invited_by_fkey;
+
+ALTER TABLE public.invitations
+  ADD CONSTRAINT invitations_invited_by_profiles_fkey
+  FOREIGN KEY (invited_by)
+  REFERENCES public.profiles(id)
+  ON DELETE CASCADE;
+
+-- Optional index for faster joins / lookups
+CREATE INDEX IF NOT EXISTS invitations_invited_by_idx
+  ON public.invitations (invited_by);
