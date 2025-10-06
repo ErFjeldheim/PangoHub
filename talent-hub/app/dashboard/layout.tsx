@@ -10,10 +10,6 @@ export default async function DashboardLayout({
 }) {
   const { user, profile } = await getProfile();
 
-  console.log("[DashboardLayout] User:", user);
-  console.log("[DashboardLayout] Profile:", profile);
-  console.log("[DashboardLayout] Profile.role:", profile?.role);
-
   return (
     <div className="flex h-screen bg-background">
       <DashboardSidebar user={user} profile={profile} />

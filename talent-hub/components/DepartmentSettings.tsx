@@ -1,3 +1,4 @@
+// components/DepartmentSettings.tsx
 "use client";
 
 import { FC, useState } from "react";
@@ -25,8 +26,8 @@ interface DepartmentSettingsProps {
   department: {
     id: string;
     name: string;
-    description: string;
-    leader_profile_id: string | null;
+    description: string | null; // ← allow null
+    leader_profile_id?: string | null; // ← allow undefined/null
   };
   consultants: {
     id: string;
@@ -40,13 +41,15 @@ const DepartmentSettings: FC<DepartmentSettingsProps> = ({
 }) => {
   const router = useRouter();
   const [name, setName] = useState(department.name);
-  const [description, setDescription] = useState(department.description);
-  const [leaderId, setLeaderId] = useState(department.leader_profile_id);
+  const [description, setDescription] = useState(department.description ?? ""); // ← guard null to ""
+  const [leaderId, setLeaderId] = useState<string | null>(
+    department.leader_profile_id ?? null
+  );
 
   const handleUpdate = async () => {
     await updateDepartment(department.id, {
       name,
-      description,
+      description: description, // ← persist empty string as null if you prefer
       leader_profile_id: leaderId,
     });
     alert("Department updated successfully!");
@@ -79,6 +82,7 @@ const DepartmentSettings: FC<DepartmentSettingsProps> = ({
               onChange={(e) => setName(e.target.value)}
             />
           </div>
+
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
             <Input
@@ -87,20 +91,23 @@ const DepartmentSettings: FC<DepartmentSettingsProps> = ({
               onChange={(e) => setDescription(e.target.value)}
             />
           </div>
+
           <div className="space-y-2">
             <Label htmlFor="leader">Department Leader</Label>
             <Select
-              value={leaderId || ""}
-              onValueChange={(value) => setLeaderId(value)}
+              value={leaderId ?? "none"} // ← use "none" instead of ""
+              onValueChange={
+                (value) => setLeaderId(value === "none" ? null : value) // ← map "none" → null
+              }
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select a leader" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">No leader</SelectItem>
-                {consultants.map((consultant) => (
-                  <SelectItem key={consultant.id} value={consultant.id}>
-                    {consultant.display_name}
+                {consultants.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.display_name}
                   </SelectItem>
                 ))}
               </SelectContent>

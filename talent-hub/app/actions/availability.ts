@@ -156,3 +156,13 @@ export async function setCommittedHours(
 
   return data as AvailabilityRow;
 }
+
+export async function getAggregatedAvailabilityForDepartment(id: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_aggregated_availability_for_department", { p_department_id: id });
+  if (error) {
+    console.error("Error fetching aggregated availability:", error);
+    return [];
+  }
+  return data;
+}

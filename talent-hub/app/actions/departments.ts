@@ -3,9 +3,13 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
+import { getConsultantsForDepartment } from "@/app/actions/consultants";
+import type { Department } from "@/types/department";
+import type { Consultant } from "@/types/consultant";
+
 export async function getDepartments() {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc('get_departments_with_details');
+  const { data, error } = await supabase.rpc("get_departments_with_details");
   if (error) {
     console.error("Error fetching departments:", error);
     return [];
@@ -27,7 +31,14 @@ export async function createDepartment(name: string, description: string) {
   return { data };
 }
 
-export async function updateDepartment(id: string, values: { name: string; description: string; leader_profile_id: string | null }) {
+export async function updateDepartment(
+  id: string,
+  values: {
+    name: string;
+    description: string;
+    leader_profile_id: string | null;
+  }
+) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("departments")
@@ -54,29 +65,14 @@ export async function deleteDepartment(id: string) {
   return {};
 }
 
-export async function getDepartmentDetails(id: string) {
+export async function addConsultantToDepartment(
+  departmentId: string,
+  profileId: string
+) {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("departments").select("id, name, description, leader_profile_id").eq("id", id).single();
-  if (error) {
-    console.error("Error fetching department details:", error);
-    return null;
-  }
-  return data;
-}
-
-export async function getConsultantsForDepartment(id: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("get_consultants_for_department", { p_department_id: id });
-  if (error) {
-    console.error("Error fetching consultants for department:", error);
-    return [];
-  }
-  return data;
-}
-
-export async function addConsultantToDepartment(departmentId: string, profileId: string) {
-  const supabase = await createClient();
-  const { error } = await supabase.from("profiles_departments").insert({ department_id: departmentId, profile_id: profileId });
+  const { error } = await supabase
+    .from("profiles_departments")
+    .insert({ department_id: departmentId, profile_id: profileId });
   if (error) {
     console.error("Error adding consultant to department:", error);
     return { error };
@@ -85,9 +81,16 @@ export async function addConsultantToDepartment(departmentId: string, profileId:
   return {};
 }
 
-export async function removeConsultantFromDepartment(departmentId: string, profileId: string) {
+export async function removeConsultantFromDepartment(
+  departmentId: string,
+  profileId: string
+) {
   const supabase = await createClient();
-  const { error } = await supabase.from("profiles_departments").delete().eq("department_id", departmentId).eq("profile_id", profileId);
+  const { error } = await supabase
+    .from("profiles_departments")
+    .delete()
+    .eq("department_id", departmentId)
+    .eq("profile_id", profileId);
   if (error) {
     console.error("Error removing consultant from department:", error);
     return { error };
@@ -96,22 +99,102 @@ export async function removeConsultantFromDepartment(departmentId: string, profi
   return {};
 }
 
-export async function getProjectsForDepartment(id: string) {
+export type DepartmentOverview = {
+  id: string;
+  name: string;
+  leaderName: string | null;
+  totalConsultants: number;
+  availableConsultants: number;
+};
+
+type RawRollupRow = {
+  department_id: string;
+  department_name: string;
+  leader_name: string | null;
+  total_consultants: number;
+  available_consultants: number;
+};
+
+export async function getDepartmentsOverview(): Promise<DepartmentOverview[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("get_projects_for_department", { p_department_id: id });
+
+  // No generics, no `.returns()` — keep it simple
+  const { data, error } = await supabase.rpc("get_department_rollup");
+
   if (error) {
-    console.error("Error fetching projects for department:", error);
+    console.error("Error fetching department overview:", error);
     return [];
   }
-  return data;
+
+  // Narrow to array at runtime (and at the same time, at type level)
+  const rows: RawRollupRow[] = Array.isArray(data)
+    ? (data as RawRollupRow[])
+    : [];
+
+  return rows.map(
+    (r): DepartmentOverview => ({
+      id: r.department_id,
+      name: r.department_name,
+      leaderName: r.leader_name,
+      totalConsultants: r.total_consultants,
+      availableConsultants: r.available_consultants,
+    })
+  );
 }
 
-export async function getAggregatedAvailabilityForDepartment(id: string) {
+export type DepartmentDetails = {
+  id: string;
+  name: string;
+  description: string | null;
+  consultant_count: number;
+  leader_name: string | null;
+  leader_profile_id?: string | null; // Optional if you want the raw id too
+};
+
+export async function getDepartmentDetails(
+  id: string
+): Promise<DepartmentDetails | null> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("get_aggregated_availability_for_department", { p_department_id: id });
+  const { data, error } = await supabase.rpc("get_departments_with_details");
+
   if (error) {
-    console.error("Error fetching aggregated availability:", error);
-    return [];
+    console.error("Error fetching department details:", error);
+    return null;
   }
-  return data;
+  const row = (data ?? []).find((d: any) => d.id === id);
+  if (!row) return null;
+
+  // If you also want the raw leader_profile_id in UI, fetch it directly:
+  const { data: deptRow } = await supabase
+    .from("departments")
+    .select("leader_profile_id")
+    .eq("id", id)
+    .single();
+
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description ?? null,
+    consultant_count: Number(row.consultant_count ?? 0),
+    leader_name: row.leader_name ?? null,
+    leader_profile_id: deptRow?.leader_profile_id ?? null,
+  };
+}
+
+// app/actions/departments.ts
+export async function assignDepartmentLeader(
+  departmentId: string,
+  leaderProfileId: string | null
+) {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("departments")
+    .update({ leader_profile_id: leaderProfileId })
+    .eq("id", departmentId);
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+  return { ok: true };
 }

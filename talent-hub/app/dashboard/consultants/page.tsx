@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ConsultantSearch } from "@/components/ConsultantSearch";
+import ConsultantSearch from "@/components/ConsultantSearch";
 import { searchConsultants } from "@/lib/actions/consultants";
 import { ConsultantGrid } from "@/components/consultants/ConsultantGrid";
 import { ConsultantEmptyState } from "@/components/consultants/ConsultantEmptyState";
@@ -43,8 +43,6 @@ export default function ConsultantsPage() {
           <Button>Invite Consultant</Button>
         </Link>
       </div>
-
-      <ConsultantSearch onSearch={handleSearch} />
 
       {isLoading ? (
         <p>Loading...</p>

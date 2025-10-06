@@ -1,54 +1,27 @@
-'use client';
-
-import { FC } from 'react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-
-interface MonthlyAvailability {
-  month: string;
-  total_hours_available: number;
-  total_hours_committed: number;
-  total_hours_free: number;
-}
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 
 interface DepartmentAvailabilityProps {
-  availability: MonthlyAvailability[];
+  departmentName: string;
+  availableConsultants: number;
+  totalConsultants: number;
 }
 
-const DepartmentAvailability: FC<DepartmentAvailabilityProps> = ({ availability }) => {
-  if (availability.length === 0) {
-    return <p className="text-muted-foreground">No availability data found for the consultants in this department for the next 6 months.</p>;
-  }
+export function DepartmentAvailability({ departmentName, availableConsultants, totalConsultants }: DepartmentAvailabilityProps) {
+  const availabilityPercentage = totalConsultants > 0 ? (availableConsultants / totalConsultants) * 100 : 0;
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Department Availability</CardTitle>
+        <CardTitle>{departmentName}</CardTitle>
       </CardHeader>
       <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Month</TableHead>
-              <TableHead className="text-right">Available Hours</TableHead>
-              <TableHead className="text-right">Committed Hours</TableHead>
-              <TableHead className="text-right">Free Hours</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {availability.map(monthlyData => (
-              <TableRow key={monthlyData.month}>
-                <TableCell>{new Date(monthlyData.month + '-02').toLocaleString('default', { month: 'long', year: 'numeric' })}</TableCell>
-                <TableCell className="text-right">{monthlyData.total_hours_available}</TableCell>
-                <TableCell className="text-right">{monthlyData.total_hours_committed}</TableCell>
-                <TableCell className="text-right font-bold text-green-600">{monthlyData.total_hours_free}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <div className="flex justify-between items-center">
+          <span className="text-muted-foreground">Availability</span>
+          <span className="font-semibold">{availableConsultants} / {totalConsultants}</span>
+        </div>
+        <Progress value={availabilityPercentage} className="mt-2" />
       </CardContent>
     </Card>
   );
-};
-
-export default DepartmentAvailability;
+}
