@@ -10,8 +10,13 @@ export function ConsultantSkills({ skills }: { skills: any[] }) {
       <CardContent>
         <div className="flex flex-wrap gap-2">
           {skills.map((skill: any, index) => (
+            // ConsultantSkills
             <Badge key={index} variant="secondary">
-              {skill.skills.name} (Proficiency: {skill.proficiency})
+              {skill.skills.name}
+              {typeof skill.proficiency === "number"
+                ? ` · P${skill.proficiency}`
+                : ""}
+              {typeof skill.years === "number" ? ` · ${skill.years}y` : ""}
             </Badge>
           ))}
         </div>

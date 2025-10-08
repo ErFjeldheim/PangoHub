@@ -1,19 +1,23 @@
-import { 
-  getAvailability, 
-  getConsultant, 
-  getEducations, 
-  getExperiences, 
-  getSkills, 
-  getUser 
+// app/dashboard/consultants/[id]/page.tsx
+import {
+  getAvailability,
+  getConsultant,
+  getEducations,
+  getExperiences,
+  getSkills,
+  getUser,
 } from "@/app/actions/consultants";
+
 import { ConsultantDetailPageContent } from "./ConsultantDetailPageContent";
 
 interface ConsultantDetailPageProps {
-  params: Promise<{ id: string }>
+  params: { id: string };
 }
 
-export default async function ConsultantDetailPage({ params }: ConsultantDetailPageProps) {
-  const { id } = await params
+export default async function ConsultantDetailPage({
+  params,
+}: ConsultantDetailPageProps) {
+  const { id } = params; // ✅ no await
   const user = await getUser();
   const consultant = await getConsultant(id);
   const skills = await getSkills(id);
@@ -22,13 +26,13 @@ export default async function ConsultantDetailPage({ params }: ConsultantDetailP
   const currentAvailability = await getAvailability(id);
 
   return (
-    <ConsultantDetailPageContent 
+    <ConsultantDetailPageContent
       user={user}
-      consultant={consultant} 
-      skills={skills} 
-      experiences={experiences} 
-      educations={educations} 
-      currentAvailability={currentAvailability} 
+      consultant={consultant}
+      skills={skills ?? []}
+      experiences={experiences ?? []}
+      educations={educations ?? []}
+      currentAvailability={currentAvailability ?? null}
     />
-  )
+  );
 }

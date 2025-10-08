@@ -1,43 +1,12 @@
- Core Functionality
+### Missing Functionality
 
-   * Talent Hub/Consultant Directory: A platform for managing consultant profiles,
-     skills, availability, and project assignments.
-   * User Roles: admin and consultant roles with different levels of access.
-   * Authentication: Supabase-powered authentication with email/password and
-     invitation-based sign-ups.
-   * Rich Profiles: Detailed user profiles with contact information, social links,
-     and professional details.
-   * Skills Management: A system for tracking skills, proficiency, and interests.
-   * Departments: Organization of consultants into departments.
-   * Availability: Monthly availability tracking for consultants.
-   * Projects and Clients: Tracking of clients, projects, and consultant
-     assignments.
-   * Search: Full-text search for finding consultants.
-   * Admin Dashboard: Admin-specific views and functions for platform management.
+*   **Resource planning and allocation:** While the application tracks availability, it lacks a dedicated interface for proactive resource planning. A visual timeline or calendar-based view would allow managers to assign consultants to projects and identify potential scheduling conflicts.
+*   **Gantt charts for project timelines:** The current project view is limited to a simple list. Implementing Gantt charts would provide a more intuitive and comprehensive overview of project timelines, dependencies, and progress.
+*   **CRM Lite for client management:** The application stores client information but lacks a dedicated interface for managing client relationships. Adding a CRM-lite module would allow users to track interactions, manage contacts, and store important client-related documents.
+*   **Financial forecasting:** The application could be enhanced with financial forecasting capabilities. By combining project data with consultant rates, the system could generate revenue projections and provide insights into the financial health of the business.
 
-  Missing Features & Development Plan
+### Visualization Improvements
 
-  While the backend is quite robust, the frontend seems to be lagging. Here's a
-  development plan to bridge that gap:
-
-   1. Department Management UI: The backend supports departments, but there's no UI
-      for admins to manage them. I'll create the necessary pages and components for
-      creating, editing, and managing departments, including assigning leaders and
-      viewing members.
-   2. Client and Project Management UI: Similar to departments, the UI for managing
-      clients and projects is missing. I'll build the interface for admins to create,
-      edit, and assign consultants to projects.
-   3. Admin Dashboard Enhancements: The current admin dashboard is likely a
-      placeholder. I'll enhance the analytics page with more meaningful data and add
-      a section for managing user invitations.
-   4. Improved Consultant Profile View: I'll expand the consultant profile page to
-      display all relevant information, including skills, projects, availability, and
-      department details. I'll also add a profile editing feature.
-   5. Dynamic Dashboard Home Page: The main dashboard page will be made more dynamic
-      and personalized. Consultants will see their current projects and availability,
-      while admins will get a high-level overview of the platform's activity.
-   6. Refined Skill Management: I'll improve the skill management interface and, if
-      needed, add a feature for admins to manage the canonical list of skills.
-
-  I will now begin with the first item on the plan: Implement Department
-  Management. I'll start by creating the necessary UI and components.
+*   **Interactive charts and graphs:** The analytics page currently displays static charts. Replacing these with interactive charts would allow users to drill down into the data and gain deeper insights.
+*   **Heatmaps for skill distribution:** A heatmap visualization would provide a more intuitive way to represent skill distribution across departments, making it easier to identify skill gaps and areas of expertise.
+*   **Network graphs for consultant relationships:** A network graph could be used to visualize the relationships between consultants, projects, and departments, revealing hidden connections and collaboration patterns.
