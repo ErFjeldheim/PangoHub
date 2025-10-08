@@ -7,12 +7,19 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 CREATE EXTENSION IF NOT EXISTS citext;
 
 -- 1) Departments ---------------------------------------------------------------
+-- If a DB already has the original names, rename them first (idempotent)
+UPDATE public.departments SET name = 'Tech'     WHERE name IN ('Engineering') AND name <> 'Tech';
+UPDATE public.departments SET name = 'Strategy' WHERE name IN ('Data & Analytics') AND name <> 'Strategy';
+UPDATE public.departments SET name = 'Design'   WHERE name IN ('Design') AND name <> 'Design';
+UPDATE public.departments SET name = 'Management' WHERE name IN ('Management') AND name <> 'Management';
+
+-- Ensure the four canonical departments exist
 INSERT INTO public.departments (name, description)
 VALUES
   ('Management','Operations & leadership'),
-  ('Engineering','Product engineering'),
+  ('Tech','Product engineering'),
   ('Design','Product design'),
-  ('Data & Analytics','Data platform & insights')
+  ('Strategy','Strategy, data & insights')
 ON CONFLICT (name) DO NOTHING;
 
 -- 2) Users (profiles created via trigger) --------------------------------------
@@ -35,7 +42,7 @@ VALUES
   now(), now(), '', '', '', ''
 ),
 -- Consultants
--- Engineering
+-- Tech
 (
   '00000000-0000-0000-0000-000000000000',
   '10000000-0000-0000-0000-000000000001',
@@ -43,7 +50,7 @@ VALUES
   extensions.crypt('password123', extensions.gen_salt('bf')),
   now(),
   '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Alex","last_name":"Engineer","title":"Software Engineer","department":"Engineering"}',
+  '{"first_name":"Alex","last_name":"Engineer","title":"Software Engineer","department":"Tech"}',
   now(), now(), '', '', '', ''
 ),
 (
@@ -53,7 +60,7 @@ VALUES
   extensions.crypt('password123', extensions.gen_salt('bf')),
   now(),
   '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Riley","last_name":"Backend","title":"Backend Developer","department":"Engineering"}',
+  '{"first_name":"Riley","last_name":"Backend","title":"Backend Developer","department":"Tech"}',
   now(), now(), '', '', '', ''
 ),
 (
@@ -63,7 +70,7 @@ VALUES
   extensions.crypt('password123', extensions.gen_salt('bf')),
   now(),
   '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Taylor","last_name":"DevOps","title":"DevOps Engineer","department":"Engineering"}',
+  '{"first_name":"Taylor","last_name":"DevOps","title":"DevOps Engineer","department":"Tech"}',
   now(), now(), '', '', '', ''
 ),
 (
@@ -73,7 +80,7 @@ VALUES
   extensions.crypt('password123', extensions.gen_salt('bf')),
   now(),
   '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Morgan","last_name":"Frontend","title":"Frontend Developer","department":"Engineering"}',
+  '{"first_name":"Morgan","last_name":"Frontend","title":"Frontend Developer","department":"Tech"}',
   now(), now(), '', '', '', ''
 ),
 (
@@ -83,7 +90,7 @@ VALUES
   extensions.crypt('password123', extensions.gen_salt('bf')),
   now(),
   '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Charlie","last_name":"QA","title":"QA Engineer","department":"Engineering"}',
+  '{"first_name":"Charlie","last_name":"QA","title":"QA Engineer","department":"Tech"}',
   now(), now(), '', '', '', ''
 ),
 
@@ -139,7 +146,7 @@ VALUES
   now(), now(), '', '', '', ''
 ),
 
--- Data & Analytics
+-- Strategy
 (
   '00000000-0000-0000-0000-000000000000',
   '30000000-0000-0000-0000-000000000001',
@@ -147,7 +154,7 @@ VALUES
   extensions.crypt('password123', extensions.gen_salt('bf')),
   now(),
   '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Sam","last_name":"Data","title":"Data Engineer","department":"Data & Analytics"}',
+  '{"first_name":"Sam","last_name":"Data","title":"Data Engineer","department":"Strategy"}',
   now(), now(), '', '', '', ''
 ),
 (
@@ -157,7 +164,7 @@ VALUES
   extensions.crypt('password123', extensions.gen_salt('bf')),
   now(),
   '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Jordan","last_name":"Analytics","title":"Data Analyst","department":"Data & Analytics"}',
+  '{"first_name":"Jordan","last_name":"Analytics","title":"Data Analyst","department":"Strategy"}',
   now(), now(), '', '', '', ''
 ),
 (
@@ -167,7 +174,7 @@ VALUES
   extensions.crypt('password123', extensions.gen_salt('bf')),
   now(),
   '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Blake","last_name":"BI","title":"Business Intelligence Analyst","department":"Data & Analytics"}',
+  '{"first_name":"Blake","last_name":"BI","title":"Business Intelligence Analyst","department":"Strategy"}',
   now(), now(), '', '', '', ''
 ),
 (
@@ -177,7 +184,7 @@ VALUES
   extensions.crypt('password123', extensions.gen_salt('bf')),
   now(),
   '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Drew","last_name":"ML","title":"Machine Learning Engineer","department":"Data & Analytics"}',
+  '{"first_name":"Drew","last_name":"ML","title":"Machine Learning Engineer","department":"Strategy"}',
   now(), now(), '', '', '', ''
 ),
 (
@@ -187,7 +194,7 @@ VALUES
   extensions.crypt('password123', extensions.gen_salt('bf')),
   now(),
   '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Hayden","last_name":"Stats","title":"Statistician","department":"Data & Analytics"}',
+  '{"first_name":"Hayden","last_name":"Stats","title":"Statistician","department":"Strategy"}',
   now(), now(), '', '', '', ''
 ),
 
@@ -249,7 +256,7 @@ VALUES
   extensions.crypt('password123', extensions.gen_salt('bf')),
   now(),
   '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Casey","last_name":"Coder","title":"Senior Software Engineer","department":"Engineering"}',
+  '{"first_name":"Casey","last_name":"Coder","title":"Senior Software Engineer","department":"Tech"}',
   now(), now(), '', '', '', ''
 ),
 (
@@ -269,7 +276,7 @@ VALUES
   extensions.crypt('password123', extensions.gen_salt('bf')),
   now(),
   '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Ari","last_name":"Analyst","title":"Data Scientist","department":"Data & Analytics"}',
+  '{"first_name":"Ari","last_name":"Analyst","title":"Data Scientist","department":"Strategy"}',
   now(), now(), '', '', '', ''
 ),
 (
@@ -279,11 +286,10 @@ VALUES
   extensions.crypt('password123', extensions.gen_salt('bf')),
   now(),
   '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Finley","last_name":"Fullstack","title":"Full-stack Engineer","department":"Engineering"}',
+  '{"first_name":"Finley","last_name":"Fullstack","title":"Full-stack Engineer","department":"Tech"}',
   now(), now(), '', '', '', ''
 )
 ON CONFLICT (id) DO NOTHING;
-
 
 -- Admin membership
 INSERT INTO public.admin_members (user_id)
@@ -427,10 +433,8 @@ FROM c WHERE c.name = 'Nordic Retail Group'
 ON CONFLICT DO NOTHING;
 
 -- 9) Project staffing & skills -------------------------------------------------
--- Grab project ids for convenience
 WITH
-p AS (SELECT id, name FROM public.projects),
-s AS (SELECT id, name FROM public.skills)
+p AS (SELECT id, name FROM public.projects)
 INSERT INTO public.project_members (project_id, profile_id, role, start_date, hours, contribution)
 SELECT p.id, '9e0b1f2a-3c4d-5e6f-7a8b-9c0d1e2f3a4b'::uuid, 'Lead Engineer', CURRENT_DATE - INTERVAL '90 days', 60, 'Architecture & core features'
 FROM p WHERE p.name = 'Donation Portal Revamp'
@@ -487,7 +491,6 @@ ON CONFLICT (email) DO NOTHING;
 -- =============================================================================
 
 
-
 -- =============================================================================
 -- Addendum (no cross-statement CTEs): realistic seed for the 20 new consultants
 -- =============================================================================
@@ -497,7 +500,7 @@ INSERT INTO public.profiles_departments (profile_id, department_id, is_primary, 
 SELECT p.id, d.id, TRUE, 'member'
 FROM public.profiles p
 JOIN auth.users u ON u.id = p.id
-JOIN public.departments d ON d.name = 'Engineering'
+JOIN public.departments d ON d.name = 'Tech'
 WHERE u.email IN ('alex.engineer@example.com','riley.backend@example.com','taylor.devops@example.com','morgan.frontend@example.com','charlie.qa@example.com')
 ON CONFLICT (profile_id, department_id) DO NOTHING;
 
@@ -513,7 +516,7 @@ INSERT INTO public.profiles_departments (profile_id, department_id, is_primary, 
 SELECT p.id, d.id, TRUE, 'member'
 FROM public.profiles p
 JOIN auth.users u ON u.id = p.id
-JOIN public.departments d ON d.name = 'Data & Analytics'
+JOIN public.departments d ON d.name = 'Strategy'
 WHERE u.email IN ('sam.data@example.com','jordan.analytics@example.com','blake.bi@example.com','drew.ml@example.com','hayden.stats@example.com')
 ON CONFLICT (profile_id, department_id) DO NOTHING;
 
@@ -530,13 +533,13 @@ UPDATE public.departments d
 SET leader_profile_id = p.id
 FROM public.profiles p
 JOIN auth.users u ON u.id = p.id
-WHERE (d.name = 'Management'       AND u.email = 'admin@example.com')
-   OR (d.name = 'Engineering'      AND u.email = 'alex.engineer@example.com')
-   OR (d.name = 'Design'           AND u.email = 'jamie.designer@example.com')
-   OR (d.name = 'Data & Analytics' AND u.email = 'sam.data@example.com');
+WHERE (d.name = 'Management' AND u.email = 'admin@example.com')
+   OR (d.name = 'Tech'       AND u.email = 'alex.engineer@example.com')
+   OR (d.name = 'Design'     AND u.email = 'jamie.designer@example.com')
+   OR (d.name = 'Strategy'   AND u.email = 'sam.data@example.com');
 
 -- D) Skills: sensible bundles per department ----------------------------------
--- Engineers
+-- Tech
 INSERT INTO public.profile_skills (profile_id, skill_id, proficiency, years)
 SELECT p.id, s.id, (3 + floor(random()*3))::smallint, (2 + floor(random()*6))::numeric(4,1)
 FROM public.profiles p
@@ -545,7 +548,7 @@ JOIN public.skills s ON s.name IN ('React','Next.js','TypeScript','Node.js','Pos
 WHERE u.email IN ('alex.engineer@example.com','riley.backend@example.com','taylor.devops@example.com','morgan.frontend@example.com','charlie.qa@example.com')
 ON CONFLICT DO NOTHING;
 
--- Designers
+-- Design
 INSERT INTO public.profile_skills (profile_id, skill_id, proficiency, years)
 SELECT p.id, s.id, (3 + floor(random()*3))::smallint, (2 + floor(random()*6))::numeric(4,1)
 FROM public.profiles p
@@ -554,7 +557,7 @@ JOIN public.skills s ON s.name IN ('Figma','UX Research','Tailwind CSS','React')
 WHERE u.email IN ('jamie.designer@example.com','casey.ux@example.com','robin.creative@example.com','kendall.brand@example.com','avery.motion@example.com')
 ON CONFLICT DO NOTHING;
 
--- Data & Analytics
+-- Strategy
 INSERT INTO public.profile_skills (profile_id, skill_id, proficiency, years)
 SELECT p.id, s.id, (3 + floor(random()*3))::smallint, (2 + floor(random()*6))::numeric(4,1)
 FROM public.profiles p
@@ -578,21 +581,21 @@ WITH months AS (
   FROM generate_series(0,11) AS g(n)
 )
 INSERT INTO public.availability_months (profile_id, month, hours_available, hours_committed)
--- Engineers: 150–170 avail, 20–80 committed
+-- Tech: 150–170 avail, 20–80 committed
 SELECT p.id, m.m, (150 + floor(random()*21))::int, (20 + floor(random()*61))::int
 FROM months m
 JOIN public.profiles p ON TRUE
 JOIN auth.users u ON u.id = p.id
 WHERE u.email IN ('alex.engineer@example.com','riley.backend@example.com','taylor.devops@example.com','morgan.frontend@example.com','charlie.qa@example.com')
 UNION ALL
--- Designers: 140–160 avail, 10–70 committed
+-- Design: 140–160 avail, 10–70 committed
 SELECT p.id, m.m, (140 + floor(random()*21))::int, (10 + floor(random()*61))::int
 FROM months m
 JOIN public.profiles p ON TRUE
 JOIN auth.users u ON u.id = p.id
 WHERE u.email IN ('jamie.designer@example.com','casey.ux@example.com','robin.creative@example.com','kendall.brand@example.com','avery.motion@example.com')
 UNION ALL
--- Data & Analytics: 150–170 avail, 30–90 committed
+-- Strategy: 150–170 avail, 30–90 committed
 SELECT p.id, m.m, (150 + floor(random()*21))::int, (30 + floor(random()*61))::int
 FROM months m
 JOIN public.profiles p ON TRUE
@@ -797,5 +800,107 @@ JOIN public.skills s ON s.name IN ('Kubernetes','GraphQL')
 WHERE u.email IN ('taylor.devops@example.com','alex.engineer@example.com')
 ON CONFLICT DO NOTHING;
 
+-- 13) Project hours by department ---------------------------------------------
+WITH p AS (SELECT id, name FROM public.projects),
+     d AS (SELECT id, name FROM public.departments)
+INSERT INTO public.project_department_hours (project_id, department_id, hours_required)
+-- Donation Portal Revamp
+SELECT p.id, d.id, v.hours
+FROM p
+JOIN (VALUES
+  ('Donation Portal Revamp','Tech',       240),
+  ('Donation Portal Revamp','Design',      80),
+  ('Donation Portal Revamp','Management',  40)
+) AS v(project, department, hours) ON v.project = p.name
+JOIN d ON d.name = v.department
+ON CONFLICT (project_id, department_id) DO NOTHING;
 
-REFRESH MATERIALIZED VIEW public.consultant_search;
+WITH p AS (SELECT id, name FROM public.projects),
+     d AS (SELECT id, name FROM public.departments)
+INSERT INTO public.project_department_hours (project_id, department_id, hours_required)
+-- City Services App
+SELECT p.id, d.id, v.hours
+FROM p
+JOIN (VALUES
+  ('City Services App','Tech',     200),
+  ('City Services App','Design',   120),
+  ('City Services App','Strategy',  40)
+) AS v(project, department, hours) ON v.project = p.name
+JOIN d ON d.name = v.department
+ON CONFLICT (project_id, department_id) DO NOTHING;
+
+WITH p AS (SELECT id, name FROM public.projects),
+     d AS (SELECT id, name FROM public.departments)
+INSERT INTO public.project_department_hours (project_id, department_id, hours_required)
+-- Retail Insights
+SELECT p.id, d.id, v.hours
+FROM p
+JOIN (VALUES
+  ('Retail Insights','Strategy', 220),
+  ('Retail Insights','Tech',      60)
+) AS v(project, department, hours) ON v.project = p.name
+JOIN d ON d.name = v.department
+ON CONFLICT (project_id, department_id) DO NOTHING;
+
+-- 14) (Optional) keep legacy projects.hours_required in sync if column exists --
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'projects'
+      AND column_name = 'hours_required'
+  ) THEN
+    UPDATE public.projects p
+    SET hours_required = sub.total
+    FROM (
+      SELECT project_id, SUM(hours_required)::int AS total
+      FROM public.project_department_hours
+      GROUP BY project_id
+    ) sub
+    WHERE sub.project_id = p.id;
+  END IF;
+END
+$$;
+
+-- 15) Applications (consultant "I'm interested") -------------------------------
+WITH u AS (SELECT id, email FROM auth.users),
+     p AS (SELECT id, name FROM public.projects)
+INSERT INTO public.project_interest (project_id, profile_id, message)
+SELECT p.id, u.id, v.msg
+FROM u
+JOIN (VALUES
+  ('City Services App',      'fullstack@example.com',     'Happy to take backend or full-stack tasks.'),
+  ('City Services App',      'designer@example.com',      'Can help with flows and visuals.'),
+  ('Donation Portal Revamp', 'alex.engineer@example.com', 'I can assist with payments integration.'),
+  ('Retail Insights',        'data@example.com',          'Interested in modeling and dashboards.')
+) AS v(project, email, msg) ON v.email = u.email
+JOIN p ON p.name = v.project
+ON CONFLICT (project_id, profile_id) DO NOTHING;
+
+-- 16) Enrich other projects with skills (for nicer UI) -------------------------
+WITH p AS (SELECT id, name FROM public.projects),
+     s AS (SELECT id, name FROM public.skills)
+INSERT INTO public.project_skills (project_id, skill_id)
+SELECT p.id, s.id
+FROM p, s
+WHERE p.name = 'City Services App'
+  AND s.name IN ('React','Next.js','TypeScript','Tailwind CSS','Figma')
+ON CONFLICT DO NOTHING;
+
+WITH p AS (SELECT id, name FROM public.projects),
+     s AS (SELECT id, name FROM public.skills)
+INSERT INTO public.project_skills (project_id, skill_id)
+SELECT p.id, s.id
+FROM p, s
+WHERE p.name = 'Retail Insights'
+  AND s.name IN ('Python','dbt','Airflow','Power BI','BigQuery')
+ON CONFLICT DO NOTHING;
+
+-- 17) (Optional) Ensure projects storage bucket exists -------------------------
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('projects','projects', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- 18) Final touch: refresh searchable view ------------------------------------
+REFRESH MATERIALIZED VIEW CONCURRENTLY public.consultant_search;

@@ -1,27 +1,36 @@
-"use client"
+"use client";
 
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Users, UserPlus, Settings, BarChart3, Home, LogOut, User, Building } from "lucide-react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { createClient } from "@/lib/supabase/client"
-import { useRouter } from "next/navigation"
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+  Users,
+  UserPlus,
+  Settings,
+  BarChart3,
+  Home,
+  LogOut,
+  User,
+  Building,
+} from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 
 interface DashboardSidebarProps {
-  user: any
-  profile: any
+  user: any;
+  profile: any;
 }
 
 export function DashboardSidebar({ user, profile }: DashboardSidebarProps) {
-  const pathname = usePathname()
-  const router = useRouter()
-  const supabase = createClient()
+  const pathname = usePathname();
+  const router = useRouter();
+  const supabase = createClient();
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    router.push("/auth/login")
-  }
+    await supabase.auth.signOut();
+    router.push("/auth/login");
+  };
 
   const navigation = [
     {
@@ -41,6 +50,12 @@ export function DashboardSidebar({ user, profile }: DashboardSidebarProps) {
       href: "/dashboard/consultants",
       icon: Users,
       current: pathname.startsWith("/dashboard/consultants"),
+    },
+    {
+      name: "Projects",
+      href: "/dashboard/projects",
+      icon: Users,
+      current: pathname.startsWith("/dashboard/projects"),
     },
     ...(profile.role === "admin"
       ? [
@@ -70,7 +85,7 @@ export function DashboardSidebar({ user, profile }: DashboardSidebarProps) {
       icon: Settings,
       current: pathname === "/dashboard/settings",
     },
-  ]
+  ];
 
   return (
     <div className="flex flex-col w-64 bg-card border-r border-border">
@@ -80,18 +95,21 @@ export function DashboardSidebar({ user, profile }: DashboardSidebarProps) {
 
       <nav className="flex-1 px-4 py-6 space-y-2">
         {navigation.map((item) => {
-          const Icon = item.icon
+          const Icon = item.icon;
           return (
             <Link key={item.name} href={item.href}>
               <Button
                 variant={item.current ? "secondary" : "ghost"}
-                className={cn("w-full justify-start", item.current && "bg-secondary text-secondary-foreground")}
+                className={cn(
+                  "w-full justify-start",
+                  item.current && "bg-secondary text-secondary-foreground"
+                )}
               >
                 <Icon className="mr-3 h-4 w-4" />
                 {item.name}
               </Button>
             </Link>
-          )
+          );
         })}
       </nav>
 
@@ -107,7 +125,9 @@ export function DashboardSidebar({ user, profile }: DashboardSidebarProps) {
             <p className="text-sm font-medium truncate">
               {profile.first_name} {profile.last_name}
             </p>
-            <p className="text-xs text-muted-foreground capitalize">{profile.role}</p>
+            <p className="text-xs text-muted-foreground capitalize">
+              {profile.role}
+            </p>
           </div>
         </div>
         <Button
@@ -121,5 +141,5 @@ export function DashboardSidebar({ user, profile }: DashboardSidebarProps) {
         </Button>
       </div>
     </div>
-  )
+  );
 }

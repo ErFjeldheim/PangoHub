@@ -26,7 +26,7 @@ import { Building2, Calendar } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-const ROUTE_BASE = "/dashboard/project";
+const ROUTE_BASE = "/dashboard/projects";
 
 const ROLE_OPTIONS = [
   "Consultant",

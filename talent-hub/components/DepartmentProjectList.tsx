@@ -1,38 +1,75 @@
-'use client';
+"use client";
 
-import { FC } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { FC } from "react";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
-interface Project {
+type ProjectStatus = "planned" | "active" | "completed" | "on_hold";
+
+interface DepartmentProject {
   id: string;
   name: string;
-  description: string;
-  start_date: string;
-  end_date: string;
+  description: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  status: ProjectStatus;
+  client_name: string | null;
 }
 
 interface DepartmentProjectListProps {
-  projects: Project[];
+  projects: DepartmentProject[];
 }
 
-const DepartmentProjectList: FC<DepartmentProjectListProps> = ({ projects }) => {
-  if (projects.length === 0) {
-    return <p className="text-muted-foreground">No projects found for this department.</p>;
+const StatusBadge: FC<{ status: ProjectStatus }> = ({ status }) => {
+  const label =
+    status === "on_hold"
+      ? "On hold"
+      : status.charAt(0).toUpperCase() + status.slice(1);
+  return (
+    <span className="text-[10px] uppercase tracking-wide px-2 py-1 rounded border">
+      {label}
+    </span>
+  );
+};
+
+const fmtDate = (value: string | null) =>
+  value ? new Date(value).toLocaleDateString() : "—";
+
+const DepartmentProjectList: FC<DepartmentProjectListProps> = ({
+  projects,
+}) => {
+  if (!projects?.length) {
+    return (
+      <p className="text-muted-foreground">
+        No projects found for this department.
+      </p>
+    );
   }
 
   return (
     <div className="grid gap-4">
-      {projects.map(project => (
+      {projects.map((project) => (
         <Card key={project.id}>
-          <CardHeader>
-            <CardTitle>{project.name}</CardTitle>
+          <CardHeader className="space-y-1">
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle className="truncate">{project.name}</CardTitle>
+              <StatusBadge status={project.status} />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {project.client_name ?? "—"}
+            </p>
           </CardHeader>
+
           <CardContent>
-            <p className="text-muted-foreground">{project.description}</p>
+            <p className="text-muted-foreground">
+              {project.description ?? "No description"}
+            </p>
+
             <div className="flex items-center text-sm text-muted-foreground mt-4">
-              <span>{new Date(project.start_date).toLocaleDateString()}</span>
-              <span className="mx-2">-</span>
-              <span>{project.end_date ? new Date(project.end_date).toLocaleDateString() : 'Ongoing'}</span>
+              <span>{fmtDate(project.start_date)}</span>
+              <span className="mx-2">–</span>
+              <span>
+                {project.end_date ? fmtDate(project.end_date) : "Ongoing"}
+              </span>
             </div>
           </CardContent>
         </Card>
