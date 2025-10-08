@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { FC, useEffect, useState } from 'react';
-import Link from 'next/link';
-import { getDepartments } from '@/app/actions/departments';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import DepartmentForm from './DepartmentForm';
-import { Users, User } from 'lucide-react';
+import { FC, useEffect, useState } from "react";
+import Link from "next/link";
+import { getDepartments } from "@/app/actions/departments";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import DepartmentForm from "./DepartmentForm";
+import { Users, User } from "lucide-react";
 
 interface Department {
   id: string;
@@ -20,6 +20,7 @@ const DepartmentList: FC = () => {
 
   const fetchDepartments = async () => {
     const data = await getDepartments();
+    console.log(data);
     setDepartments(data);
   };
 
@@ -35,13 +36,18 @@ const DepartmentList: FC = () => {
       </div>
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {departments.map((department) => (
-          <Link href={`/dashboard/departments/${department.id}`} key={department.id}>
+          <Link
+            href={`/dashboard/departments/${department.id}`}
+            key={department.id}
+          >
             <Card className="h-full hover:shadow-lg transition-shadow duration-200 cursor-pointer flex flex-col">
               <CardHeader>
                 <CardTitle className="text-xl">{department.name}</CardTitle>
               </CardHeader>
               <CardContent className="flex-grow flex flex-col justify-between">
-                <p className="text-muted-foreground mb-4">{department.description}</p>
+                <p className="text-muted-foreground mb-4">
+                  {department.description}
+                </p>
                 <div className="flex items-center text-sm text-muted-foreground">
                   <div className="flex items-center mr-4">
                     <Users className="h-4 w-4 mr-2" />
@@ -49,7 +55,9 @@ const DepartmentList: FC = () => {
                   </div>
                   <div className="flex items-center">
                     <User className="h-4 w-4 mr-2" />
-                    <span>{department.leader_name || 'No leader assigned'}</span>
+                    <span>
+                      {department.leader_name || "No leader assigned"}
+                    </span>
                   </div>
                 </div>
               </CardContent>

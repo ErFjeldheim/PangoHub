@@ -76,7 +76,7 @@ export default async function DepartmentsInformation() {
           return (
             <Link
               key={d.id}
-              href={`dashboard//departments/${d.id}`}
+              href={`/dashboard/departments/${d.id}`}
               className="group rounded-2xl border bg-card p-5 transition hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <div className="mb-3 flex items-center justify-between gap-3">

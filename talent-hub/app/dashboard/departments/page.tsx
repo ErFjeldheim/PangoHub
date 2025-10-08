@@ -1,5 +1,5 @@
+import DepartmentsInformation from "@/components/DepartmentsInformation";
 import { getProfile } from "@/lib/actions/profile";
-import DepartmentList from "@/components/DepartmentList";
 import { redirect } from "next/navigation";
 
 const DepartmentsPage = async () => {
@@ -12,7 +12,7 @@ const DepartmentsPage = async () => {
 
   return (
     <div className="p-6">
-      <DepartmentList />
+      <DepartmentsInformation />
     </div>
   );
 };

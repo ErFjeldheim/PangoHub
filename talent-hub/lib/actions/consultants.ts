@@ -6,7 +6,7 @@ export async function searchConsultants(query: string) {
   const supabase = await createClient();
 
   if (!query) {
-    const { data, error } = await supabase.from('v_profiles_with_email').select('*');
+    const { data, error } = await supabase.from('v_consultant_overview').select('*');
     if (error) {
       console.error('Error fetching all consultants:', error);
       return [];
@@ -27,7 +27,7 @@ export async function searchConsultants(query: string) {
   const profileIds = data.map((d) => d.id);
 
   const { data: profiles, error: profilesError } = await supabase
-    .from('v_profiles_with_email')
+    .from('v_consultant_overview')
     .select('*')
     .in('id', profileIds);
 

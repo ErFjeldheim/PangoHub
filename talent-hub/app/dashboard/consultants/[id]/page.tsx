@@ -1,4 +1,3 @@
-// app/dashboard/consultants/[id]/page.tsx
 import {
   getAvailability,
   getConsultant,
@@ -17,7 +16,7 @@ interface ConsultantDetailPageProps {
 export default async function ConsultantDetailPage({
   params,
 }: ConsultantDetailPageProps) {
-  const { id } = params; // ✅ no await
+  const { id } = params;
   const user = await getUser();
   const consultant = await getConsultant(id);
   const skills = await getSkills(id);

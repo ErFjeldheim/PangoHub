@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import type { Consultant } from "@/types/consultant";
 
 export async function getUser() {
   const supabase = await createClient();
@@ -32,23 +33,34 @@ export async function getProfile(userId: string) {
   return profile;
 }
 
-export async function getConsultants() {
+export async function getConsultants(): Promise<Consultant[]> {
   const supabase = await createClient();
 
+  // pull only the columns you actually use on the dashboard
   const { data, error } = await supabase
     .from("v_consultant_overview")
-    .select("*");
+    .select(
+      "id, first_name, last_name, title, availability_status, experience_years"
+    );
 
   if (error) throw error;
+  const rows = (data ?? []) as Consultant[];
 
-  // Call a lightweight RPC to check admin IDs, or fetch admin_members and filter
-  const { data: admins } = await supabase.rpc("is_admin_batch", {
-    ids: data.map((p) => p.id),
-  });
-  // If you don't have is_admin_batch, see the DB approach below for a better solution.
+  // If there are no rows, avoid calling the RPC
+  if (rows.length === 0) return rows;
 
-  const adminSet = new Set(admins); // array of UUIDs that are admins
-  return data.filter((p) => !adminSet.has(p.id));
+  // Optional: filter out admins (keep null-safe)
+  const ids = rows.map((p) => p.id);
+  const { data: admins, error: adminErr } = await supabase.rpc(
+    "is_admin_batch",
+    { ids }
+  );
+  if (adminErr) {
+    // If the RPC fails, just return the rows rather than breaking the dashboard
+    return rows;
+  }
+  const adminSet = new Set((admins ?? []) as string[]);
+  return rows.filter((p) => !adminSet.has(p.id));
 }
 
 export async function getPendingInvitations() {

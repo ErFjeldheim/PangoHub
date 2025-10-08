@@ -3,7 +3,7 @@
 import { Bell, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import ConsultantSearch from "./ConsultantSearch";
+import ConsultantSearch from "./consultants/ConsultantSearch";
 
 interface DashboardHeaderProps {
   user: any;
