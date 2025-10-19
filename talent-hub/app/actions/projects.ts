@@ -3,6 +3,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient as createServerSupabaseClient } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
 
 /* -----------------------------------------------------------------------------
    Helpers
@@ -603,4 +604,319 @@ export async function removeProjectDepartmentHours(
   if (error) throw error;
 
   return { ok: true };
+}
+
+// --- Member update/remove used by <MembersList> ---
+export async function updateMember(
+  projectId: string,
+  profileId: string,
+  patch: {
+    role?: string | null;
+    hours?: number | null;
+    start_date?: string | null;
+  }
+) {
+  await requireAdmin();
+  const supabase = await getServerClient();
+  const payload: Record<string, any> = {};
+  if (patch.role !== undefined) payload.role = patch.role;
+  if (patch.hours !== undefined) payload.hours = patch.hours;
+  if (patch.start_date !== undefined) payload.start_date = patch.start_date;
+
+  const { error } = await supabase
+    .from("project_members")
+    .update(payload)
+    .match({ project_id: projectId, profile_id: profileId });
+
+  if (error) throw error;
+  return { ok: true };
+}
+
+// ====== Form-action wrappers (used directly as <form action={...}>) ======
+export async function addSkillAction(formData: FormData) {
+  const pid = formData.get("project_id") as string;
+  const skillId = formData.get("skill_id") as string;
+  await addRequiredSkill(pid, skillId);
+  revalidatePath(`/dashboard/projects/${pid}`);
+}
+
+export async function removeSkillAction(formData: FormData) {
+  const pid = formData.get("project_id") as string;
+  const skillId = formData.get("skill_id") as string;
+  await removeRequiredSkill(pid, skillId);
+  revalidatePath(`/dashboard/projects/${pid}`);
+}
+
+export async function upsertDeptHoursAction(formData: FormData) {
+  const pid = formData.get("project_id") as string;
+  const departmentId = formData.get("department_id") as string;
+  const hoursStr = (formData.get("hours_required") as string) || "0";
+  const hours = Math.max(0, Number.parseInt(hoursStr, 10) || 0);
+  await setProjectDepartmentHours(pid, departmentId, hours);
+  revalidatePath(`/dashboard/projects/${pid}`);
+}
+
+export async function removeDeptHoursAction(formData: FormData) {
+  const pid = formData.get("project_id") as string;
+  const departmentId = formData.get("department_id") as string;
+  await removeProjectDepartmentHours(pid, departmentId);
+  revalidatePath(`/dashboard/projects/${pid}`);
+}
+
+export async function applyAction(formData: FormData) {
+  const pid = formData.get("project_id") as string;
+  const msg = (formData.get("message") as string) || undefined;
+  await applyToProject(pid, msg);
+  revalidatePath(`/dashboard/projects/${pid}`);
+}
+
+export async function withdrawAction(formData: FormData) {
+  const pid = formData.get("project_id") as string;
+  await withdrawApplication(pid);
+  revalidatePath(`/dashboard/projects/${pid}`);
+}
+
+export async function approveApplicantAction(formData: FormData) {
+  const pid = formData.get("project_id") as string;
+  const profileId = formData.get("profile_id") as string;
+  const role = (formData.get("role") as string) || "Consultant";
+  const hoursStr = (formData.get("hours") as string) || "";
+  const start = (formData.get("start_date") as string) || null;
+  const hours = hoursStr ? Number.parseInt(hoursStr, 10) : null;
+
+  await approveApplicant({
+    projectId: pid,
+    profileId,
+    role,
+    hours,
+    start_date: start,
+  });
+  revalidatePath(`/dashboard/projects/${pid}`);
+}
+
+export async function uploadFileAction(formData: FormData) {
+  const pid = formData.get("project_id") as string;
+  const file = formData.get("file") as File;
+  if (!file || (file as any).size === 0) throw new Error("No file selected");
+  await uploadProjectFile(pid, file);
+  revalidatePath(`/dashboard/projects/${pid}`);
+}
+
+export async function deleteFileAction(formData: FormData) {
+  const pid = formData.get("project_id") as string;
+  const path = formData.get("path") as string;
+  await deleteProjectFile(pid, path);
+  revalidatePath(`/dashboard/projects/${pid}`);
+}
+
+export async function updateMemberAction(formData: FormData) {
+  const pid = formData.get("project_id") as string;
+  const profileId = formData.get("profile_id") as string;
+  const role = ((formData.get("role") as string) || "").trim() || null;
+  const hoursStr = (formData.get("hours") as string) || "";
+  const hours = hoursStr ? Number.parseInt(hoursStr, 10) : null;
+  const start = (formData.get("start_date") as string) || null;
+
+  await updateMember(pid, profileId, { role, hours, start_date: start });
+  revalidatePath(`/dashboard/projects/${pid}`);
+}
+
+export async function removeMemberAction(formData: FormData) {
+  const pid = formData.get("project_id") as string;
+  const profileId = formData.get("profile_id") as string;
+  await removeMember(pid, profileId);
+  revalidatePath(`/dashboard/projects/${pid}`);
+}
+
+/* -----------------------------------------------------------------------------
+   Ownership helpers
+----------------------------------------------------------------------------- */
+
+async function isAdminUser(uid: string) {
+  const supabase = await getServerClient();
+  const { data } = await supabase.rpc("is_admin", { uid });
+  return !!data;
+}
+
+async function isProjectOwner(projectId: string, uid: string) {
+  const supabase = await getServerClient();
+  const { data } = await supabase
+    .from("projects")
+    .select("owner_id")
+    .eq("id", projectId)
+    .maybeSingle();
+  return !!data?.owner_id && data.owner_id === uid;
+}
+
+/** Require owner or admin for owner-scope mutations (e.g., posting updates) */
+async function requireOwnerOrAdmin(projectId: string) {
+  const supabase = await getServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  if (await isAdminUser(user.id)) return;
+  if (await isProjectOwner(projectId, user.id)) return;
+
+  throw new Error("Forbidden");
+}
+
+/* -----------------------------------------------------------------------------
+   Project owner
+----------------------------------------------------------------------------- */
+
+/** Read: get current project owner (id + display_name) */
+export async function getProjectOwner(projectId: string): Promise<{
+  profile_id: string;
+  display_name: string;
+} | null> {
+  const supabase = await getServerClient();
+
+  const { data: proj, error: pErr } = await supabase
+    .from("projects")
+    .select("owner_id")
+    .eq("id", projectId)
+    .maybeSingle();
+  if (pErr) throw pErr;
+  if (!proj?.owner_id) return null;
+
+  const { data: prof, error: profErr } = await supabase
+    .from("profiles")
+    .select("id, display_name")
+    .eq("id", proj.owner_id)
+    .maybeSingle();
+  if (profErr) throw profErr;
+  if (!prof) return null;
+
+  return { profile_id: prof.id, display_name: prof.display_name };
+}
+
+/**
+ * Form action (ADMIN ONLY): set/change owner.
+ * Validates that the selected owner is currently a project member.
+ * Expects: project_id, owner_profile_id (FormData)
+ */
+export async function setProjectOwner(formData: FormData) {
+  const projectId = formData.get("project_id") as string;
+  const ownerId = (formData.get("owner_profile_id") as string) || null;
+
+  await requireAdmin(); // admin decides owner
+
+  const supabase = await getServerClient();
+
+  if (ownerId) {
+    // ensure owner is a member of this project
+    const { data: membership, error: mErr } = await supabase
+      .from("project_members")
+      .select("project_id")
+      .match({ project_id: projectId, profile_id: ownerId })
+      .maybeSingle();
+    if (mErr) throw mErr;
+    if (!membership) {
+      throw new Error("Selected owner must be a current project member.");
+    }
+  }
+
+  const { error: upErr } = await supabase
+    .from("projects")
+    .update({ owner_id: ownerId })
+    .eq("id", projectId);
+  if (upErr) throw upErr;
+
+  revalidatePath(`/dashboard/projects/${projectId}`);
+}
+
+/* -----------------------------------------------------------------------------
+   Project updates (status / goals / notes)
+----------------------------------------------------------------------------- */
+
+type ProjectUpdate = {
+  id: string;
+  title: string | null;
+  body: string | null;
+  created_at: string;
+  author: { id: string; display_name: string | null } | null;
+};
+
+/** Read: list updates (newest first) with author display_name */
+export async function listProjectUpdates(
+  projectId: string
+): Promise<ProjectUpdate[]> {
+  const supabase = await getServerClient();
+
+  const { data, error } = await supabase
+    .from("project_updates")
+    .select(
+      `
+      id,
+      title,
+      body,
+      created_at,
+      author:profiles!project_updates_author_id_fkey(id, display_name)
+    `
+    )
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+
+  return (data ?? []).map((u: any) => ({
+    id: u.id,
+    title: u.title,
+    body: u.body,
+    created_at: u.created_at,
+    author: u.author
+      ? { id: u.author.id, display_name: u.author.display_name }
+      : null,
+  }));
+}
+
+/**
+ * Form action: create an update (Owner OR Admin).
+ * Expects: project_id, title, body
+ */
+export async function createProjectUpdate(formData: FormData) {
+  const projectId = formData.get("project_id") as string;
+  const title = ((formData.get("title") as string) || "").trim() || null;
+  const body = ((formData.get("body") as string) || "").trim() || null;
+
+  await requireOwnerOrAdmin(projectId);
+
+  const supabase = await getServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { error } = await supabase.from("project_updates").insert({
+    project_id: projectId,
+    author_id: user.id,
+    title,
+    body,
+  });
+  if (error) throw error;
+
+  revalidatePath(`/dashboard/projects/${projectId}`);
+}
+
+/**
+ * Form action: delete an update (Owner OR Admin).
+ * Expects: project_id, update_id
+ */
+export async function deleteProjectUpdate(formData: FormData) {
+  const projectId = formData.get("project_id") as string;
+  const updateId = formData.get("update_id") as string;
+
+  await requireOwnerOrAdmin(projectId);
+
+  const supabase = await getServerClient();
+  const { error } = await supabase
+    .from("project_updates")
+    .delete()
+    .eq("id", updateId)
+    .eq("project_id", projectId);
+  if (error) throw error;
+
+  revalidatePath(`/dashboard/projects/${projectId}`);
 }

@@ -23,9 +23,13 @@ export default async function DepartmentDetailPage({ params }: PageProps) {
     getAggregatedAvailabilityForDepartment(id),
   ]);
 
+  console.log("availability", availability);
+  console.log("projects", projects);
+  console.log("consultants", consultants);
+  console.log("department", department);
+
   if (!department) notFound();
 
-  // ↓↓↓ add these two lines
   const totalConsultants = consultants.length;
   const availableConsultants = consultants.filter(
     (c: any) => c.availability_status === "available"

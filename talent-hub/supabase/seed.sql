@@ -1,302 +1,85 @@
 -- =============================================================================
--- Rich local dev seed (idempotent) — with explicit ::uuid casts to avoid 42804
+-- Deterministic, realistic seed.sql (Supabase seeder-safe)
+-- =============================================================================
+-- Conventions:
+-- - Base month anchor: 2025-01-01
+-- - project_members.hours = planned HOURS PER MONTH
+-- - availability_months.hours_committed is derived from staffing
 -- =============================================================================
 
 -- 0) Extensions ----------------------------------------------------------------
 CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 CREATE EXTENSION IF NOT EXISTS citext;
 
--- 1) Departments ---------------------------------------------------------------
--- If a DB already has the original names, rename them first (idempotent)
-UPDATE public.departments SET name = 'Tech'     WHERE name IN ('Engineering') AND name <> 'Tech';
-UPDATE public.departments SET name = 'Strategy' WHERE name IN ('Data & Analytics') AND name <> 'Strategy';
-UPDATE public.departments SET name = 'Design'   WHERE name IN ('Design') AND name <> 'Design';
-UPDATE public.departments SET name = 'Management' WHERE name IN ('Management') AND name <> 'Management';
-
--- Ensure the four canonical departments exist
-INSERT INTO public.departments (name, description)
-VALUES
+-- 1) Departments (upsert) ------------------------------------------------------
+INSERT INTO public.departments (name, description) VALUES
   ('Management','Operations & leadership'),
   ('Tech','Product engineering'),
   ('Design','Product design'),
   ('Strategy','Strategy, data & insights')
-ON CONFLICT (name) DO NOTHING;
+ON CONFLICT (name) DO UPDATE
+SET description = EXCLUDED.description;
 
--- 2) Users (profiles created via trigger) --------------------------------------
+-- 2) Users (insert-if-missing by email; profiles created via trigger) ----------
+WITH seed_users(email, first_name, last_name, title, dept) AS (
+  VALUES
+  -- Admin
+  ('admin@example.com','Ada','Admin','Head of Operations','Management'),
+  -- Tech
+  ('alex.engineer@example.com','Alex','Engineer','Software Engineer','Tech'),
+  ('riley.backend@example.com','Riley','Backend','Backend Developer','Tech'),
+  ('taylor.devops@example.com','Taylor','DevOps','DevOps Engineer','Tech'),
+  ('morgan.frontend@example.com','Morgan','Frontend','Frontend Developer','Tech'),
+  ('charlie.qa@example.com','Charlie','QA','QA Engineer','Tech'),
+  -- Design
+  ('jamie.designer@example.com','Jamie','Designer','UX Designer','Design'),
+  ('casey.ux@example.com','Casey','UX','UI/UX Researcher','Design'),
+  ('robin.creative@example.com','Robin','Creative','Graphic Designer','Design'),
+  ('kendall.brand@example.com','Kendall','Brand','Brand Designer','Design'),
+  ('avery.motion@example.com','Avery','Motion','Motion Designer','Design'),
+  -- Strategy
+  ('sam.data@example.com','Sam','Data','Data Engineer','Strategy'),
+  ('jordan.analytics@example.com','Jordan','Analytics','Data Analyst','Strategy'),
+  ('blake.bi@example.com','Blake','BI','Business Intelligence Analyst','Strategy'),
+  ('drew.ml@example.com','Drew','ML','Machine Learning Engineer','Strategy'),
+  ('hayden.stats@example.com','Hayden','Stats','Statistician','Strategy'),
+  -- Management
+  ('alexis.pm@example.com','Alexis','PM','Project Manager','Management'),
+  ('reese.hr@example.com','Reese','HR','HR Specialist','Management'),
+  ('taylor.ops@example.com','Taylor','Ops','Operations Coordinator','Management'),
+  ('bailey.finance@example.com','Bailey','Finance','Financial Analyst','Management'),
+  ('sasha.admin@example.com','Sasha','Admin','Administrative Assistant','Management')
+)
 INSERT INTO auth.users (
   instance_id, id, aud, role, email, encrypted_password,
   email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
   created_at, updated_at,
   confirmation_token, email_change, email_change_token_new, recovery_token
 )
-VALUES
--- Admin
-(
+SELECT
   '00000000-0000-0000-0000-000000000000',
-  '8d2b0f3e-4b1a-4b8a-8f0a-3b1e7b0a9b1c',
-  'authenticated','authenticated','admin@example.com',
+  gen_random_uuid(),
+  'authenticated','authenticated',
+  su.email,
   extensions.crypt('password123', extensions.gen_salt('bf')),
   now(),
-  '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Ada","last_name":"Admin","title":"Head of Operations","department":"Management"}',
+  '{"provider":"email","providers":["email"]}'::jsonb,
+  jsonb_build_object(
+    'first_name', su.first_name,
+    'last_name',  su.last_name,
+    'title',      su.title,
+    'department', su.dept
+  ),
   now(), now(), '', '', '', ''
-),
--- Consultants
--- Tech
-(
-  '00000000-0000-0000-0000-000000000000',
-  '10000000-0000-0000-0000-000000000001',
-  'authenticated','authenticated','alex.engineer@example.com',
-  extensions.crypt('password123', extensions.gen_salt('bf')),
-  now(),
-  '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Alex","last_name":"Engineer","title":"Software Engineer","department":"Tech"}',
-  now(), now(), '', '', '', ''
-),
-(
-  '00000000-0000-0000-0000-000000000000',
-  '10000000-0000-0000-0000-000000000002',
-  'authenticated','authenticated','riley.backend@example.com',
-  extensions.crypt('password123', extensions.gen_salt('bf')),
-  now(),
-  '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Riley","last_name":"Backend","title":"Backend Developer","department":"Tech"}',
-  now(), now(), '', '', '', ''
-),
-(
-  '00000000-0000-0000-0000-000000000000',
-  '10000000-0000-0000-0000-000000000003',
-  'authenticated','authenticated','taylor.devops@example.com',
-  extensions.crypt('password123', extensions.gen_salt('bf')),
-  now(),
-  '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Taylor","last_name":"DevOps","title":"DevOps Engineer","department":"Tech"}',
-  now(), now(), '', '', '', ''
-),
-(
-  '00000000-0000-0000-0000-000000000000',
-  '10000000-0000-0000-0000-000000000004',
-  'authenticated','authenticated','morgan.frontend@example.com',
-  extensions.crypt('password123', extensions.gen_salt('bf')),
-  now(),
-  '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Morgan","last_name":"Frontend","title":"Frontend Developer","department":"Tech"}',
-  now(), now(), '', '', '', ''
-),
-(
-  '00000000-0000-0000-0000-000000000000',
-  '10000000-0000-0000-0000-000000000005',
-  'authenticated','authenticated','charlie.qa@example.com',
-  extensions.crypt('password123', extensions.gen_salt('bf')),
-  now(),
-  '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Charlie","last_name":"QA","title":"QA Engineer","department":"Tech"}',
-  now(), now(), '', '', '', ''
-),
-
--- Design
-(
-  '00000000-0000-0000-0000-000000000000',
-  '20000000-0000-0000-0000-000000000001',
-  'authenticated','authenticated','jamie.designer@example.com',
-  extensions.crypt('password123', extensions.gen_salt('bf')),
-  now(),
-  '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Jamie","last_name":"Designer","title":"UX Designer","department":"Design"}',
-  now(), now(), '', '', '', ''
-),
-(
-  '00000000-0000-0000-0000-000000000000',
-  '20000000-0000-0000-0000-000000000002',
-  'authenticated','authenticated','casey.ux@example.com',
-  extensions.crypt('password123', extensions.gen_salt('bf')),
-  now(),
-  '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Casey","last_name":"UX","title":"UI/UX Researcher","department":"Design"}',
-  now(), now(), '', '', '', ''
-),
-(
-  '00000000-0000-0000-0000-000000000000',
-  '20000000-0000-0000-0000-000000000003',
-  'authenticated','authenticated','robin.creative@example.com',
-  extensions.crypt('password123', extensions.gen_salt('bf')),
-  now(),
-  '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Robin","last_name":"Creative","title":"Graphic Designer","department":"Design"}',
-  now(), now(), '', '', '', ''
-),
-(
-  '00000000-0000-0000-0000-000000000000',
-  '20000000-0000-0000-0000-000000000004',
-  'authenticated','authenticated','kendall.brand@example.com',
-  extensions.crypt('password123', extensions.gen_salt('bf')),
-  now(),
-  '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Kendall","last_name":"Brand","title":"Brand Designer","department":"Design"}',
-  now(), now(), '', '', '', ''
-),
-(
-  '00000000-0000-0000-0000-000000000000',
-  '20000000-0000-0000-0000-000000000005',
-  'authenticated','authenticated','avery.motion@example.com',
-  extensions.crypt('password123', extensions.gen_salt('bf')),
-  now(),
-  '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Avery","last_name":"Motion","title":"Motion Designer","department":"Design"}',
-  now(), now(), '', '', '', ''
-),
-
--- Strategy
-(
-  '00000000-0000-0000-0000-000000000000',
-  '30000000-0000-0000-0000-000000000001',
-  'authenticated','authenticated','sam.data@example.com',
-  extensions.crypt('password123', extensions.gen_salt('bf')),
-  now(),
-  '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Sam","last_name":"Data","title":"Data Engineer","department":"Strategy"}',
-  now(), now(), '', '', '', ''
-),
-(
-  '00000000-0000-0000-0000-000000000000',
-  '30000000-0000-0000-0000-000000000002',
-  'authenticated','authenticated','jordan.analytics@example.com',
-  extensions.crypt('password123', extensions.gen_salt('bf')),
-  now(),
-  '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Jordan","last_name":"Analytics","title":"Data Analyst","department":"Strategy"}',
-  now(), now(), '', '', '', ''
-),
-(
-  '00000000-0000-0000-0000-000000000000',
-  '30000000-0000-0000-0000-000000000003',
-  'authenticated','authenticated','blake.bi@example.com',
-  extensions.crypt('password123', extensions.gen_salt('bf')),
-  now(),
-  '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Blake","last_name":"BI","title":"Business Intelligence Analyst","department":"Strategy"}',
-  now(), now(), '', '', '', ''
-),
-(
-  '00000000-0000-0000-0000-000000000000',
-  '30000000-0000-0000-0000-000000000004',
-  'authenticated','authenticated','drew.ml@example.com',
-  extensions.crypt('password123', extensions.gen_salt('bf')),
-  now(),
-  '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Drew","last_name":"ML","title":"Machine Learning Engineer","department":"Strategy"}',
-  now(), now(), '', '', '', ''
-),
-(
-  '00000000-0000-0000-0000-000000000000',
-  '30000000-0000-0000-0000-000000000005',
-  'authenticated','authenticated','hayden.stats@example.com',
-  extensions.crypt('password123', extensions.gen_salt('bf')),
-  now(),
-  '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Hayden","last_name":"Stats","title":"Statistician","department":"Strategy"}',
-  now(), now(), '', '', '', ''
-),
-
--- Management / Operations
-(
-  '00000000-0000-0000-0000-000000000000',
-  '40000000-0000-0000-0000-000000000001',
-  'authenticated','authenticated','alexis.pm@example.com',
-  extensions.crypt('password123', extensions.gen_salt('bf')),
-  now(),
-  '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Alexis","last_name":"PM","title":"Project Manager","department":"Management"}',
-  now(), now(), '', '', '', ''
-),
-(
-  '00000000-0000-0000-0000-000000000000',
-  '40000000-0000-0000-0000-000000000002',
-  'authenticated','authenticated','reese.hr@example.com',
-  extensions.crypt('password123', extensions.gen_salt('bf')),
-  now(),
-  '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Reese","last_name":"HR","title":"HR Specialist","department":"Management"}',
-  now(), now(), '', '', '', ''
-),
-(
-  '00000000-0000-0000-0000-000000000000',
-  '40000000-0000-0000-0000-000000000003',
-  'authenticated','authenticated','taylor.ops@example.com',
-  extensions.crypt('password123', extensions.gen_salt('bf')),
-  now(),
-  '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Taylor","last_name":"Ops","title":"Operations Coordinator","department":"Management"}',
-  now(), now(), '', '', '', ''
-),
-(
-  '00000000-0000-0000-0000-000000000000',
-  '40000000-0000-0000-0000-000000000004',
-  'authenticated','authenticated','bailey.finance@example.com',
-  extensions.crypt('password123', extensions.gen_salt('bf')),
-  now(),
-  '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Bailey","last_name":"Finance","title":"Financial Analyst","department":"Management"}',
-  now(), now(), '', '', '', ''
-),
-(
-  '00000000-0000-0000-0000-000000000000',
-  '40000000-0000-0000-0000-000000000005',
-  'authenticated','authenticated','sasha.admin@example.com',
-  extensions.crypt('password123', extensions.gen_salt('bf')),
-  now(),
-  '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Sasha","last_name":"Admin","title":"Administrative Assistant","department":"Management"}',
-  now(), now(), '', '', '', ''
-),
-(
-  '00000000-0000-0000-0000-000000000000',
-  '9e0b1f2a-3c4d-5e6f-7a8b-9c0d1e2f3a4b',
-  'authenticated','authenticated','consultant@example.com',
-  extensions.crypt('password123', extensions.gen_salt('bf')),
-  now(),
-  '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Casey","last_name":"Coder","title":"Senior Software Engineer","department":"Tech"}',
-  now(), now(), '', '', '', ''
-),
-(
-  '00000000-0000-0000-0000-000000000000',
-  '11111111-2222-3333-4444-555555555555',
-  'authenticated','authenticated','designer@example.com',
-  extensions.crypt('password123', extensions.gen_salt('bf')),
-  now(),
-  '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Dana","last_name":"Designer","title":"Product Designer","department":"Design"}',
-  now(), now(), '', '', '', ''
-),
-(
-  '00000000-0000-0000-0000-000000000000',
-  'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
-  'authenticated','authenticated','data@example.com',
-  extensions.crypt('password123', extensions.gen_salt('bf')),
-  now(),
-  '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Ari","last_name":"Analyst","title":"Data Scientist","department":"Strategy"}',
-  now(), now(), '', '', '', ''
-),
-(
-  '00000000-0000-0000-0000-000000000000',
-  '77777777-8888-9999-aaaa-bbbbbbbbbbbb',
-  'authenticated','authenticated','fullstack@example.com',
-  extensions.crypt('password123', extensions.gen_salt('bf')),
-  now(),
-  '{"provider":"email","providers":["email"]}',
-  '{"first_name":"Finley","last_name":"Fullstack","title":"Full-stack Engineer","department":"Tech"}',
-  now(), now(), '', '', '', ''
-)
-ON CONFLICT (id) DO NOTHING;
+FROM seed_users su
+WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.email = su.email);
 
 -- Admin membership
 INSERT INTO public.admin_members (user_id)
-VALUES ('8d2b0f3e-4b1a-4b8a-8f0a-3b1e7b0a9b1c'::uuid)
+SELECT u.id FROM auth.users u WHERE u.email = 'admin@example.com'
 ON CONFLICT (user_id) DO NOTHING;
 
--- 3) Skills --------------------------------------------------------------------
+-- 3) Skills (upsert) -----------------------------------------------------------
 INSERT INTO public.skills (name, aliases) VALUES
   ('React', '{ReactJS}'),
   ('Next.js', '{}'::text[]),
@@ -322,213 +105,18 @@ INSERT INTO public.skills (name, aliases) VALUES
   ('BigQuery', '{}'::text[]),
   ('Redis', '{}'::text[]),
   ('tRPC', '{}'::text[])
-ON CONFLICT (name) DO NOTHING;
+ON CONFLICT (name) DO UPDATE
+SET aliases = EXCLUDED.aliases;
 
--- 4) Link skills to profiles (explicit ::uuid casts) ---------------------------
-INSERT INTO public.profile_skills (profile_id, skill_id, proficiency, years)
-SELECT
-  '9e0b1f2a-3c4d-5e6f-7a8b-9c0d1e2f3a4b'::uuid, s.id,
-  (4 + floor(random()*2))::smallint,
-  (4 + floor(random()*4))::numeric(4,1)
-FROM public.skills s
-WHERE s.name IN ('React','Next.js','TypeScript','Node.js','PostgreSQL','Supabase','GraphQL','Prisma','Tailwind CSS','tRPC','CI/CD','Docker')
-ON CONFLICT DO NOTHING;
-
-INSERT INTO public.profile_skills (profile_id, skill_id, proficiency, years)
-SELECT
-  '11111111-2222-3333-4444-555555555555'::uuid, s.id,
-  (3 + floor(random()*3))::smallint,
-  (3 + floor(random()*5))::numeric(4,1)
-FROM public.skills s
-WHERE s.name IN ('Figma','UX Research','React','Tailwind CSS')
-ON CONFLICT DO NOTHING;
-
-INSERT INTO public.profile_skills (profile_id, skill_id, proficiency, years)
-SELECT
-  'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'::uuid, s.id,
-  (4 + floor(random()*2))::smallint,
-  (3 + floor(random()*6))::numeric(4,1)
-FROM public.skills s
-WHERE s.name IN ('Python','Pandas','dbt','Airflow','Power BI','BigQuery','PostgreSQL','AWS')
-ON CONFLICT DO NOTHING;
-
-INSERT INTO public.profile_skills (profile_id, skill_id, proficiency, years)
-SELECT
-  '77777777-8888-9999-aaaa-bbbbbbbbbbbb'::uuid, s.id,
-  (3 + floor(random()*3))::smallint,
-  (2 + floor(random()*6))::numeric(4,1)
-FROM public.skills s
-WHERE s.name IN ('React','Next.js','TypeScript','Node.js','PostgreSQL','Supabase','GraphQL','Redis','CI/CD','Docker','AWS','Prisma')
-ON CONFLICT DO NOTHING;
-
--- 5) Availability (12 months) — cast UUIDs inside UNION branches --------------
-WITH months AS (
-  SELECT (date_trunc('month', now()) + (n || ' months')::interval)::date AS m
-  FROM generate_series(0,11) AS g(n)
-)
-INSERT INTO public.availability_months (profile_id, month, hours_available, hours_committed)
-SELECT '9e0b1f2a-3c4d-5e6f-7a8b-9c0d1e2f3a4b'::uuid, m, 160, (40 + floor(random()*41))::int FROM months
-UNION ALL
-SELECT '11111111-2222-3333-4444-555555555555'::uuid, m, (140 + floor(random()*21))::int, (20 + floor(random()*41))::int FROM months
-UNION ALL
-SELECT 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'::uuid, m, 160, (60 + floor(random()*41))::int FROM months
-UNION ALL
-SELECT '77777777-8888-9999-aaaa-bbbbbbbbbbbb'::uuid, m, (150 + floor(random()*11))::int, (0 + floor(random()*41))::int FROM months
-ON CONFLICT DO NOTHING;
-
--- 6) Experiences / Educations (explicit ::uuid) --------------------------------
-INSERT INTO public.experiences (profile_id, org, role, start_date, end_date, type, description) VALUES
-  ('9e0b1f2a-3c4d-5e6f-7a8b-9c0d1e2f3a4b'::uuid,'Pango Consulting','Senior Software Engineer','2021-01-01',NULL,'job','Next.js + Supabase platform; RLS + FTS.'),
-  ('9e0b1f2a-3c4d-5e6f-7a8b-9c0d1e2f3a4b'::uuid,'Tech Solutions Inc.','Frontend Engineer','2018-01-15','2020-12-31','job','Design systems, GraphQL/tRPC.'),
-  ('11111111-2222-3333-4444-555555555555'::uuid,'Bright Apps','Product Designer','2020-02-01',NULL,'job','E2E product design; a11y/responsive.'),
-  ('11111111-2222-3333-4444-555555555555'::uuid,'Studio Nine','UX Researcher','2017-09-01','2020-01-31','job','Mixed-methods research program.'),
-  ('aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'::uuid,'DataWorks','Data Scientist','2022-03-01',NULL,'job','Airflow/dbt pipelines; ML models.'),
-  ('aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'::uuid,'Market Insights Co.','Data Analyst','2018-08-01','2022-02-28','job','BI dashboards & ad-hoc SQL.'),
-  ('77777777-8888-9999-aaaa-bbbbbbbbbbbb'::uuid,'Cloud Craft','Full-stack Engineer','2020-06-01',NULL,'job','React/Node; Docker on AWS.'),
-  ('77777777-8888-9999-aaaa-bbbbbbbbbbbb'::uuid,'Web Innovators','Junior Developer','2017-06-01','2020-05-31','job','Legacy to Node/Postgres migration.')
-ON CONFLICT DO NOTHING;
-
-INSERT INTO public.educations (profile_id, institution, program, degree_level, start_year, end_year) VALUES
-  ('9e0b1f2a-3c4d-5e6f-7a8b-9c0d1e2f3a4b'::uuid,'NTNU','Computer Science','MSc',2013,2018),
-  ('11111111-2222-3333-4444-555555555555'::uuid,'Aalto University','Product & Service Design','BDes',2012,2016),
-  ('aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'::uuid,'University of Oslo','Data Science','MSc',2014,2019),
-  ('77777777-8888-9999-aaaa-bbbbbbbbbbbb'::uuid,'BI Norwegian Business School','Business Analytics','BSc',2015,2018)
-ON CONFLICT DO NOTHING;
-
--- 7) Compensation --------------------------------------------------------------
-INSERT INTO public.compensation (profile_id, hourly_rate, currency, valid_from) VALUES
-  ('9e0b1f2a-3c4d-5e6f-7a8b-9c0d1e2f3a4b'::uuid, 1200, 'NOK', CURRENT_DATE),
-  ('11111111-2222-3333-4444-555555555555'::uuid, 900, 'NOK', CURRENT_DATE),
-  ('aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'::uuid, 1100, 'NOK', CURRENT_DATE),
-  ('77777777-8888-9999-aaaa-bbbbbbbbbbbb'::uuid, 1150, 'NOK', CURRENT_DATE)
-ON CONFLICT (profile_id) DO NOTHING;
-
--- 8) Clients, Companies, Projects ---------------------------------------------
-INSERT INTO public.clients (name) VALUES
-  ('Trondheim Kommune'),
-  ('Pango Platform'),
-  ('Nordic Retail Group')
-ON CONFLICT (name) DO NOTHING;
-
-INSERT INTO public.companies (name) VALUES
-  ('Equinor'),
-  ('Vipps'),
-  ('Kahoot!'),
-  ('Telenor')
-ON CONFLICT (name) DO NOTHING;
-
--- Simple projects tied to clients
-WITH c AS (
-  SELECT id, name FROM public.clients
-)
-INSERT INTO public.projects (client_id, name, description, start_date, status)
-SELECT c.id, 'Donation Portal Revamp', 'Vipps integration + analytics', CURRENT_DATE - INTERVAL '120 days', 'active'
-FROM c WHERE c.name = 'Pango Platform'
-UNION ALL
-SELECT c.id, 'City Services App', 'Citizen portal MVP', CURRENT_DATE - INTERVAL '60 days', 'active'
-FROM c WHERE c.name = 'Trondheim Kommune'
-UNION ALL
-SELECT c.id, 'Retail Insights', 'Data warehouse modernization', CURRENT_DATE - INTERVAL '200 days', 'on_hold'
-FROM c WHERE c.name = 'Nordic Retail Group'
-ON CONFLICT DO NOTHING;
-
--- 9) Project staffing & skills -------------------------------------------------
-WITH
-p AS (SELECT id, name FROM public.projects)
-INSERT INTO public.project_members (project_id, profile_id, role, start_date, hours, contribution)
-SELECT p.id, '9e0b1f2a-3c4d-5e6f-7a8b-9c0d1e2f3a4b'::uuid, 'Lead Engineer', CURRENT_DATE - INTERVAL '90 days', 60, 'Architecture & core features'
-FROM p WHERE p.name = 'Donation Portal Revamp'
-UNION ALL
-SELECT p.id, '11111111-2222-3333-4444-555555555555'::uuid, 'Product Designer', CURRENT_DATE - INTERVAL '55 days', 40, 'Design system & flows'
-FROM p WHERE p.name = 'City Services App'
-UNION ALL
-SELECT p.id, 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'::uuid, 'Data Scientist', CURRENT_DATE - INTERVAL '180 days', 30, 'Modeling & dashboards'
-FROM p WHERE p.name = 'Retail Insights'
-UNION ALL
-SELECT p.id, '77777777-8888-9999-aaaa-bbbbbbbbbbbb'::uuid, 'Full-stack Engineer', CURRENT_DATE - INTERVAL '50 days', 50, 'API + UI'
-FROM p WHERE p.name = 'City Services App'
-ON CONFLICT DO NOTHING;
-
-WITH
-p AS (SELECT id, name FROM public.projects),
-s AS (SELECT id, name FROM public.skills)
-INSERT INTO public.project_skills (project_id, skill_id)
-SELECT p.id, s.id FROM p, s
-WHERE p.name = 'Donation Portal Revamp' AND s.name IN ('Supabase','PostgreSQL','Next.js','TypeScript','CI/CD')
-ON CONFLICT DO NOTHING;
-
--- 10) Interests (companies & skills) ------------------------------------------
-INSERT INTO public.profile_company_interests (profile_id, company_id)
-SELECT '9e0b1f2a-3c4d-5e6f-7a8b-9c0d1e2f3a4b'::uuid, c.id FROM public.companies c WHERE c.name IN ('Vipps','Kahoot!')
-ON CONFLICT DO NOTHING;
-
-INSERT INTO public.profile_skill_interests (profile_id, skill_id, priority)
-SELECT 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'::uuid, s.id, 5 FROM public.skills s WHERE s.name IN ('dbt','Airflow','BigQuery')
-ON CONFLICT DO NOTHING;
-
--- 11) Invitations --------------------------------------------------------------
-INSERT INTO public.invitations (email, role, invited_by, token_hash, expires_at)
-VALUES
-  ('newhire@example.com','consultant','8d2b0f3e-4b1a-4b8a-8f0a-3b1e7b0a9b1c',
-   encode(extensions.digest('invite123', 'sha256'), 'hex'),
-   now() + interval '14 days'),
-  ('daniela@example.com','consultant','8d2b0f3e-4b1a-4b8a-8f0a-3b1e7b0a9b1c',
-   encode(extensions.digest('designme', 'sha256'), 'hex'),
-   now() + interval '14 days'),
-  ('arjun@example.com','consultant','8d2b0f3e-4b1a-4b8a-8f0a-3b1e7b0a9b1c',
-   encode(extensions.digest('datadev', 'sha256'), 'hex'),
-   now() + interval '14 days')
-ON CONFLICT (email) DO NOTHING;
-
--- 12) (Optional) quick sanity counts ------------------------------------------
--- SELECT
---   (SELECT count(*) FROM auth.users) AS users,
---   (SELECT count(*) FROM public.projects) AS projects,
---   (SELECT count(*) FROM public.project_members) AS project_members,
---   (SELECT count(*) FROM public.skills) AS skills,
---   (SELECT count(*) FROM public.profile_skills) AS profile_skills,
---   (SELECT count(*) FROM public.availability_months) AS availability_rows;
--- =============================================================================
-
-
--- =============================================================================
--- Addendum (no cross-statement CTEs): realistic seed for the 20 new consultants
--- =============================================================================
-
--- B) Ensure primary memberships per department --------------------------------
+-- 4) Primary department memberships -------------------------------------------
 INSERT INTO public.profiles_departments (profile_id, department_id, is_primary, role)
 SELECT p.id, d.id, TRUE, 'member'
 FROM public.profiles p
 JOIN auth.users u ON u.id = p.id
-JOIN public.departments d ON d.name = 'Tech'
-WHERE u.email IN ('alex.engineer@example.com','riley.backend@example.com','taylor.devops@example.com','morgan.frontend@example.com','charlie.qa@example.com')
+JOIN public.departments d ON d.name = COALESCE((u.raw_user_meta_data->>'department'), 'Tech')
 ON CONFLICT (profile_id, department_id) DO NOTHING;
 
-INSERT INTO public.profiles_departments (profile_id, department_id, is_primary, role)
-SELECT p.id, d.id, TRUE, 'member'
-FROM public.profiles p
-JOIN auth.users u ON u.id = p.id
-JOIN public.departments d ON d.name = 'Design'
-WHERE u.email IN ('jamie.designer@example.com','casey.ux@example.com','robin.creative@example.com','kendall.brand@example.com','avery.motion@example.com')
-ON CONFLICT (profile_id, department_id) DO NOTHING;
-
-INSERT INTO public.profiles_departments (profile_id, department_id, is_primary, role)
-SELECT p.id, d.id, TRUE, 'member'
-FROM public.profiles p
-JOIN auth.users u ON u.id = p.id
-JOIN public.departments d ON d.name = 'Strategy'
-WHERE u.email IN ('sam.data@example.com','jordan.analytics@example.com','blake.bi@example.com','drew.ml@example.com','hayden.stats@example.com')
-ON CONFLICT (profile_id, department_id) DO NOTHING;
-
-INSERT INTO public.profiles_departments (profile_id, department_id, is_primary, role)
-SELECT p.id, d.id, TRUE, 'member'
-FROM public.profiles p
-JOIN auth.users u ON u.id = p.id
-JOIN public.departments d ON d.name = 'Management'
-WHERE u.email IN ('alexis.pm@example.com','reese.hr@example.com','taylor.ops@example.com','bailey.finance@example.com','sasha.admin@example.com')
-ON CONFLICT (profile_id, department_id) DO NOTHING;
-
--- C) Assign leaders (optional; comment out if you want UI-only assignment) ----
+-- Assign leaders (optional)
 UPDATE public.departments d
 SET leader_profile_id = p.id
 FROM public.profiles p
@@ -538,347 +126,248 @@ WHERE (d.name = 'Management' AND u.email = 'admin@example.com')
    OR (d.name = 'Design'     AND u.email = 'jamie.designer@example.com')
    OR (d.name = 'Strategy'   AND u.email = 'sam.data@example.com');
 
--- D) Skills: sensible bundles per department ----------------------------------
+-- 5) Profile skills (deterministic) -------------------------------------------
 -- Tech
+WITH tech AS (
+  SELECT p.id AS pid
+  FROM public.profiles p JOIN auth.users u ON u.id = p.id
+  WHERE u.email IN ('alex.engineer@example.com','riley.backend@example.com','taylor.devops@example.com','morgan.frontend@example.com','charlie.qa@example.com')
+),
+skills AS (SELECT id, name FROM public.skills)
 INSERT INTO public.profile_skills (profile_id, skill_id, proficiency, years)
-SELECT p.id, s.id, (3 + floor(random()*3))::smallint, (2 + floor(random()*6))::numeric(4,1)
-FROM public.profiles p
-JOIN auth.users u ON u.id = p.id
-JOIN public.skills s ON s.name IN ('React','Next.js','TypeScript','Node.js','PostgreSQL','Supabase','GraphQL','CI/CD','Docker','AWS','Prisma','Redis')
-WHERE u.email IN ('alex.engineer@example.com','riley.backend@example.com','taylor.devops@example.com','morgan.frontend@example.com','charlie.qa@example.com')
+SELECT t.pid, s.id,
+       CASE s.name
+         WHEN 'React' THEN 5 WHEN 'Next.js' THEN 5 WHEN 'TypeScript' THEN 5
+         WHEN 'Node.js' THEN 4 WHEN 'PostgreSQL' THEN 4 WHEN 'Supabase' THEN 4
+         WHEN 'GraphQL' THEN 4 WHEN 'CI/CD' THEN 4 WHEN 'Docker' THEN 4
+         WHEN 'AWS' THEN 3 WHEN 'Prisma' THEN 4 WHEN 'Redis' THEN 3
+         ELSE 3 END::smallint,
+       CASE s.name
+         WHEN 'React' THEN 5.0 WHEN 'Next.js' THEN 4.0 WHEN 'TypeScript' THEN 4.0
+         WHEN 'Node.js' THEN 5.0 WHEN 'PostgreSQL' THEN 4.0 WHEN 'Supabase' THEN 3.0
+         WHEN 'GraphQL' THEN 3.0 WHEN 'CI/CD' THEN 3.0 WHEN 'Docker' THEN 3.0
+         WHEN 'AWS' THEN 2.0 WHEN 'Prisma' THEN 3.0 WHEN 'Redis' THEN 2.0
+         ELSE 2.0 END::numeric(4,1)
+FROM tech t
+JOIN skills s ON s.name IN ('React','Next.js','TypeScript','Node.js','PostgreSQL','Supabase','GraphQL','CI/CD','Docker','AWS','Prisma','Redis')
 ON CONFLICT DO NOTHING;
 
 -- Design
+WITH des AS (
+  SELECT p.id AS pid
+  FROM public.profiles p JOIN auth.users u ON u.id = p.id
+  WHERE u.email IN ('jamie.designer@example.com','casey.ux@example.com','robin.creative@example.com','kendall.brand@example.com','avery.motion@example.com')
+),
+skills AS (SELECT id, name FROM public.skills)
 INSERT INTO public.profile_skills (profile_id, skill_id, proficiency, years)
-SELECT p.id, s.id, (3 + floor(random()*3))::smallint, (2 + floor(random()*6))::numeric(4,1)
-FROM public.profiles p
-JOIN auth.users u ON u.id = p.id
-JOIN public.skills s ON s.name IN ('Figma','UX Research','Tailwind CSS','React')
-WHERE u.email IN ('jamie.designer@example.com','casey.ux@example.com','robin.creative@example.com','kendall.brand@example.com','avery.motion@example.com')
+SELECT d.pid, s.id,
+       CASE s.name WHEN 'Figma' THEN 5 WHEN 'UX Research' THEN 4 WHEN 'Tailwind CSS' THEN 3 WHEN 'React' THEN 3 ELSE 3 END::smallint,
+       CASE s.name WHEN 'Figma' THEN 5.0 WHEN 'UX Research' THEN 4.0 WHEN 'Tailwind CSS' THEN 3.0 WHEN 'React' THEN 2.0 ELSE 2.0 END::numeric(4,1)
+FROM des d
+JOIN skills s ON s.name IN ('Figma','UX Research','Tailwind CSS','React')
 ON CONFLICT DO NOTHING;
 
 -- Strategy
+WITH strat AS (
+  SELECT p.id AS pid
+  FROM public.profiles p JOIN auth.users u ON u.id = p.id
+  WHERE u.email IN ('sam.data@example.com','jordan.analytics@example.com','blake.bi@example.com','drew.ml@example.com','hayden.stats@example.com')
+),
+skills AS (SELECT id, name FROM public.skills)
 INSERT INTO public.profile_skills (profile_id, skill_id, proficiency, years)
-SELECT p.id, s.id, (3 + floor(random()*3))::smallint, (2 + floor(random()*6))::numeric(4,1)
-FROM public.profiles p
-JOIN auth.users u ON u.id = p.id
-JOIN public.skills s ON s.name IN ('Python','Pandas','dbt','Airflow','Power BI','BigQuery','PostgreSQL','AWS')
-WHERE u.email IN ('sam.data@example.com','jordan.analytics@example.com','blake.bi@example.com','drew.ml@example.com','hayden.stats@example.com')
+SELECT st.pid, s.id,
+       CASE s.name
+         WHEN 'Python' THEN 5 WHEN 'Pandas' THEN 5
+         WHEN 'dbt' THEN 4 WHEN 'Airflow' THEN 4
+         WHEN 'Power BI' THEN 4 WHEN 'BigQuery' THEN 4
+         WHEN 'PostgreSQL' THEN 4 WHEN 'AWS' THEN 3
+         ELSE 3 END::smallint,
+       CASE s.name
+         WHEN 'Python' THEN 5.0 WHEN 'Pandas' THEN 5.0
+         WHEN 'dbt' THEN 3.0 WHEN 'Airflow' THEN 3.0
+         WHEN 'Power BI' THEN 3.0 WHEN 'BigQuery' THEN 3.0
+         WHEN 'PostgreSQL' THEN 4.0 WHEN 'AWS' THEN 2.0
+         ELSE 2.0 END::numeric(4,1)
+FROM strat st
+JOIN skills s ON s.name IN ('Python','Pandas','dbt','Airflow','Power BI','BigQuery','PostgreSQL','AWS')
 ON CONFLICT DO NOTHING;
 
 -- Management
+WITH mgmt AS (
+  SELECT p.id AS pid
+  FROM public.profiles p JOIN auth.users u ON u.id = p.id
+  WHERE u.email IN ('alexis.pm@example.com','reese.hr@example.com','taylor.ops@example.com','bailey.finance@example.com','sasha.admin@example.com')
+),
+skills AS (SELECT id, name FROM public.skills)
 INSERT INTO public.profile_skills (profile_id, skill_id, proficiency, years)
-SELECT p.id, s.id, (3 + floor(random()*3))::smallint, (3 + floor(random()*5))::numeric(4,1)
-FROM public.profiles p
-JOIN auth.users u ON u.id = p.id
-JOIN public.skills s ON s.name IN ('CI/CD','Power BI','PostgreSQL','Node.js')
-WHERE u.email IN ('alexis.pm@example.com','reese.hr@example.com','taylor.ops@example.com','bailey.finance@example.com','sasha.admin@example.com')
+SELECT m.pid, s.id,
+       CASE s.name WHEN 'CI/CD' THEN 3 WHEN 'Power BI' THEN 4 WHEN 'PostgreSQL' THEN 3 WHEN 'Node.js' THEN 2 ELSE 2 END::smallint,
+       CASE s.name WHEN 'CI/CD' THEN 2.0 WHEN 'Power BI' THEN 4.0 WHEN 'PostgreSQL' THEN 3.0 WHEN 'Node.js' THEN 1.0 ELSE 1.0 END::numeric(4,1)
+FROM mgmt m
+JOIN skills s ON s.name IN ('CI/CD','Power BI','PostgreSQL','Node.js')
 ON CONFLICT DO NOTHING;
 
--- E) Availability: 12 months with different bands -----------------------------
-WITH months AS (
-  SELECT (date_trunc('month', now()) + (n || ' months')::interval)::date AS m
-  FROM generate_series(0,11) AS g(n)
-)
-INSERT INTO public.availability_months (profile_id, month, hours_available, hours_committed)
--- Tech: 150–170 avail, 20–80 committed
-SELECT p.id, m.m, (150 + floor(random()*21))::int, (20 + floor(random()*61))::int
-FROM months m
-JOIN public.profiles p ON TRUE
-JOIN auth.users u ON u.id = p.id
-WHERE u.email IN ('alex.engineer@example.com','riley.backend@example.com','taylor.devops@example.com','morgan.frontend@example.com','charlie.qa@example.com')
-UNION ALL
--- Design: 140–160 avail, 10–70 committed
-SELECT p.id, m.m, (140 + floor(random()*21))::int, (10 + floor(random()*61))::int
-FROM months m
-JOIN public.profiles p ON TRUE
-JOIN auth.users u ON u.id = p.id
-WHERE u.email IN ('jamie.designer@example.com','casey.ux@example.com','robin.creative@example.com','kendall.brand@example.com','avery.motion@example.com')
-UNION ALL
--- Strategy: 150–170 avail, 30–90 committed
-SELECT p.id, m.m, (150 + floor(random()*21))::int, (30 + floor(random()*61))::int
-FROM months m
-JOIN public.profiles p ON TRUE
-JOIN auth.users u ON u.id = p.id
-WHERE u.email IN ('sam.data@example.com','jordan.analytics@example.com','blake.bi@example.com','drew.ml@example.com','hayden.stats@example.com')
-UNION ALL
--- Management: 120–160 avail, 20–60 committed
-SELECT p.id, m.m, (120 + floor(random()*41))::int, (20 + floor(random()*41))::int
-FROM months m
-JOIN public.profiles p ON TRUE
-JOIN auth.users u ON u.id = p.id
-WHERE u.email IN ('alexis.pm@example.com','reese.hr@example.com','taylor.ops@example.com','bailey.finance@example.com','sasha.admin@example.com')
+-- 6) Experiences / Educations (deterministic dates) ---------------------------
+INSERT INTO public.experiences (profile_id, org, role, start_date, end_date, type, description)
+SELECT p.id,'Pango Consulting','Senior Software Engineer','2021-01-01',NULL,'job','Next.js + Supabase platform; RLS + FTS.'
+FROM public.profiles p JOIN auth.users u ON u.id = p.id WHERE u.email = 'alex.engineer@example.com'
 ON CONFLICT DO NOTHING;
 
--- F) Compensation bands (NOK) --------------------------------------------------
+INSERT INTO public.experiences (profile_id, org, role, start_date, end_date, type, description)
+SELECT p.id,'Bright Apps','Product Designer','2020-02-01',NULL,'job','E2E product design; a11y/responsive.'
+FROM public.profiles p JOIN auth.users u ON u.id = p.id WHERE u.email = 'jamie.designer@example.com'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO public.experiences (profile_id, org, role, start_date, end_date, type, description)
+SELECT p.id,'DataWorks','Data Engineer','2022-03-01',NULL,'job','Airflow/dbt pipelines; ML models.'
+FROM public.profiles p JOIN auth.users u ON u.id = p.id WHERE u.email = 'sam.data@example.com'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO public.educations (profile_id, institution, program, degree_level, start_year, end_year)
+SELECT p.id, 'NTNU','Computer Science','MSc',2013,2018
+FROM public.profiles p JOIN auth.users u ON u.id = p.id WHERE u.email = 'alex.engineer@example.com'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO public.educations (profile_id, institution, program, degree_level, start_year, end_year)
+SELECT p.id, 'Aalto University','Product & Service Design','BDes',2012,2016
+FROM public.profiles p JOIN auth.users u ON u.id = p.id WHERE u.email = 'jamie.designer@example.com'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO public.educations (profile_id, institution, program, degree_level, start_year, end_year)
+SELECT p.id, 'University of Oslo','Data Science','MSc',2014,2019
+FROM public.profiles p JOIN auth.users u ON u.id = p.id WHERE u.email = 'sam.data@example.com'
+ON CONFLICT DO NOTHING;
+
+-- 7) Compensation (deterministic upsert) --------------------------------------
 INSERT INTO public.compensation (profile_id, hourly_rate, currency, valid_from)
-SELECT p.id, (1100 + floor(random()*201))::int, 'NOK', CURRENT_DATE
-FROM public.profiles p
-JOIN auth.users u ON u.id = p.id
-WHERE u.email IN ('alex.engineer@example.com','riley.backend@example.com','taylor.devops@example.com','morgan.frontend@example.com','charlie.qa@example.com')
-ON CONFLICT (profile_id) DO NOTHING;
+SELECT p.id, 1200, 'NOK', DATE '2025-01-01'
+FROM public.profiles p JOIN auth.users u ON u.id = p.id WHERE u.email = 'alex.engineer@example.com'
+ON CONFLICT (profile_id) DO UPDATE
+SET hourly_rate = EXCLUDED.hourly_rate, currency = EXCLUDED.currency, valid_from = EXCLUDED.valid_from;
 
 INSERT INTO public.compensation (profile_id, hourly_rate, currency, valid_from)
-SELECT p.id, (850 + floor(random()*151))::int, 'NOK', CURRENT_DATE
-FROM public.profiles p
-JOIN auth.users u ON u.id = p.id
-WHERE u.email IN ('jamie.designer@example.com','casey.ux@example.com','robin.creative@example.com','kendall.brand@example.com','avery.motion@example.com')
-ON CONFLICT (profile_id) DO NOTHING;
+SELECT p.id, 900, 'NOK', DATE '2025-01-01'
+FROM public.profiles p JOIN auth.users u ON u.id = p.id WHERE u.email = 'jamie.designer@example.com'
+ON CONFLICT (profile_id) DO UPDATE
+SET hourly_rate = EXCLUDED.hourly_rate, currency = EXCLUDED.currency, valid_from = EXCLUDED.valid_from;
 
 INSERT INTO public.compensation (profile_id, hourly_rate, currency, valid_from)
-SELECT p.id, (1000 + floor(random()*201))::int, 'NOK', CURRENT_DATE
-FROM public.profiles p
-JOIN auth.users u ON u.id = p.id
-WHERE u.email IN ('sam.data@example.com','jordan.analytics@example.com','blake.bi@example.com','drew.ml@example.com','hayden.stats@example.com')
-ON CONFLICT (profile_id) DO NOTHING;
+SELECT p.id, 1100, 'NOK', DATE '2025-01-01'
+FROM public.profiles p JOIN auth.users u ON u.id = p.id WHERE u.email = 'sam.data@example.com'
+ON CONFLICT (profile_id) DO UPDATE
+SET hourly_rate = EXCLUDED.hourly_rate, currency = EXCLUDED.currency, valid_from = EXCLUDED.valid_from;
 
-INSERT INTO public.compensation (profile_id, hourly_rate, currency, valid_from)
-SELECT p.id, (800 + floor(random()*151))::int, 'NOK', CURRENT_DATE
-FROM public.profiles p
-JOIN auth.users u ON u.id = p.id
-WHERE u.email IN ('alexis.pm@example.com','reese.hr@example.com','taylor.ops@example.com','bailey.finance@example.com','sasha.admin@example.com')
-ON CONFLICT (profile_id) DO NOTHING;
+-- 8) Clients & Companies (upsert) ---------------------------------------------
+INSERT INTO public.clients (name) VALUES
+  ('Trondheim Kommune'), ('Pango Platform'), ('Nordic Retail Group')
+ON CONFLICT (name) DO NOTHING;
 
--- G) Experiences ---------------------------------------------------------------
-INSERT INTO public.experiences (profile_id, org, role, start_date, end_date, type, description)
-SELECT p.id, 'Acme Tech', 'Software Engineer', (CURRENT_DATE - INTERVAL '5 years'), (CURRENT_DATE - INTERVAL '2 years'), 'job', 'Feature development, code reviews, cloud infra.'
-FROM public.profiles p JOIN auth.users u ON u.id = p.id
-WHERE u.email IN ('alex.engineer@example.com','riley.backend@example.com','morgan.frontend@example.com')
-ON CONFLICT DO NOTHING;
+INSERT INTO public.companies (name) VALUES
+  ('Equinor'), ('Vipps'), ('Kahoot!'), ('Telenor')
+ON CONFLICT (name) DO NOTHING;
 
-INSERT INTO public.experiences (profile_id, org, role, start_date, end_date, type, description)
-SELECT p.id, 'CloudOps Co.', 'DevOps Engineer', (CURRENT_DATE - INTERVAL '4 years'), NULL, 'job', 'CI/CD, Kubernetes, SRE practices.'
-FROM public.profiles p JOIN auth.users u ON u.id = p.id
-WHERE u.email IN ('taylor.devops@example.com','charlie.qa@example.com')
-ON CONFLICT DO NOTHING;
-
-INSERT INTO public.experiences (profile_id, org, role, start_date, end_date, type, description)
-SELECT p.id, 'Design Studio 12', 'UX Designer', (CURRENT_DATE - INTERVAL '6 years'), NULL, 'job', 'Design systems, accessibility, prototyping.'
-FROM public.profiles p JOIN auth.users u ON u.id = p.id
-WHERE u.email IN ('jamie.designer@example.com','casey.ux@example.com')
-ON CONFLICT DO NOTHING;
-
-INSERT INTO public.experiences (profile_id, org, role, start_date, end_date, type, description)
-SELECT p.id, 'Creative Lab', 'Graphic Designer', (CURRENT_DATE - INTERVAL '7 years'), (CURRENT_DATE - INTERVAL '1 year'), 'job', 'Branding, illustration, motion.'
-FROM public.profiles p JOIN auth.users u ON u.id = p.id
-WHERE u.email IN ('robin.creative@example.com','kendall.brand@example.com','avery.motion@example.com')
-ON CONFLICT DO NOTHING;
-
-INSERT INTO public.experiences (profile_id, org, role, start_date, end_date, type, description)
-SELECT p.id, 'DataWorks', 'Data Engineer', (CURRENT_DATE - INTERVAL '5 years'), NULL, 'job', 'ETL, dbt, Airflow, BigQuery.'
-FROM public.profiles p JOIN auth.users u ON u.id = p.id
-WHERE u.email IN ('sam.data@example.com','jordan.analytics@example.com')
-ON CONFLICT DO NOTHING;
-
-INSERT INTO public.experiences (profile_id, org, role, start_date, end_date, type, description)
-SELECT p.id, 'Insights Hub', 'BI Analyst', (CURRENT_DATE - INTERVAL '4 years'), NULL, 'job', 'Dashboards, KPI modeling, stakeholder comms.'
-FROM public.profiles p JOIN auth.users u ON u.id = p.id
-WHERE u.email IN ('blake.bi@example.com','hayden.stats@example.com')
-ON CONFLICT DO NOTHING;
-
-INSERT INTO public.experiences (profile_id, org, role, start_date, end_date, type, description)
-SELECT p.id, 'ML Forge', 'ML Engineer', (CURRENT_DATE - INTERVAL '3 years'), NULL, 'job', 'Model training, MLOps, monitoring.'
-FROM public.profiles p JOIN auth.users u ON u.id = p.id
-WHERE u.email IN ('drew.ml@example.com')
-ON CONFLICT DO NOTHING;
-
-INSERT INTO public.experiences (profile_id, org, role, start_date, end_date, type, description)
-SELECT p.id, 'Ops United', 'Project Manager', (CURRENT_DATE - INTERVAL '6 years'), NULL, 'job', 'Roadmaps, delivery, team leadership.'
-FROM public.profiles p JOIN auth.users u ON u.id = p.id
-WHERE u.email IN ('alexis.pm@example.com')
-ON CONFLICT DO NOTHING;
-
-INSERT INTO public.experiences (profile_id, org, role, start_date, end_date, type, description)
-SELECT p.id, 'PeopleFirst', 'HR Specialist', (CURRENT_DATE - INTERVAL '4 years'), NULL, 'job', 'Recruiting, onboarding, culture programs.'
-FROM public.profiles p JOIN auth.users u ON u.id = p.id
-WHERE u.email IN ('reese.hr@example.com')
-ON CONFLICT DO NOTHING;
-
-INSERT INTO public.experiences (profile_id, org, role, start_date, end_date, type, description)
-SELECT p.id, 'Opsline', 'Operations Coordinator', (CURRENT_DATE - INTERVAL '5 years'), NULL, 'job', 'Process improvement, vendor mgmt.'
-FROM public.profiles p JOIN auth.users u ON u.id = p.id
-WHERE u.email IN ('taylor.ops@example.com','sasha.admin@example.com')
-ON CONFLICT DO NOTHING;
-
-INSERT INTO public.experiences (profile_id, org, role, start_date, end_date, type, description)
-SELECT p.id, 'FinGuard', 'Financial Analyst', (CURRENT_DATE - INTERVAL '4 years'), NULL, 'job', 'Forecasting, budgeting, BI.'
-FROM public.profiles p JOIN auth.users u ON u.id = p.id
-WHERE u.email IN ('bailey.finance@example.com')
-ON CONFLICT DO NOTHING;
-
--- H) Educations ----------------------------------------------------------------
-INSERT INTO public.educations (profile_id, institution, program, degree_level, start_year, end_year)
-SELECT p.id, 'NTNU', 'Computer Science', 'BSc', 2012, 2015
-FROM public.profiles p JOIN auth.users u ON u.id = p.id
-WHERE u.email IN ('alex.engineer@example.com','morgan.frontend@example.com','charlie.qa@example.com')
-ON CONFLICT DO NOTHING;
-
-INSERT INTO public.educations (profile_id, institution, program, degree_level, start_year, end_year)
-SELECT p.id, 'UiO', 'Informatics', 'MSc', 2015, 2017
-FROM public.profiles p JOIN auth.users u ON u.id = p.id
-WHERE u.email IN ('riley.backend@example.com','taylor.devops@example.com')
-ON CONFLICT DO NOTHING;
-
-INSERT INTO public.educations (profile_id, institution, program, degree_level, start_year, end_year)
-SELECT p.id, 'Aalto University', 'Product & Service Design', 'BDes', 2013, 2016
-FROM public.profiles p JOIN auth.users u ON u.id = p.id
-WHERE u.email IN ('jamie.designer@example.com','casey.ux@example.com','robin.creative@example.com','kendall.brand@example.com','avery.motion@example.com')
-ON CONFLICT DO NOTHING;
-
-INSERT INTO public.educations (profile_id, institution, program, degree_level, start_year, end_year)
-SELECT p.id, 'BI Norwegian Business School', 'Business Analytics', 'MSc', 2014, 2018
-FROM public.profiles p JOIN auth.users u ON u.id = p.id
-WHERE u.email IN ('sam.data@example.com','jordan.analytics@example.com','blake.bi@example.com','drew.ml@example.com','hayden.stats@example.com')
-ON CONFLICT DO NOTHING;
-
-INSERT INTO public.educations (profile_id, institution, program, degree_level, start_year, end_year)
-SELECT p.id, 'NHH', 'Economics & Administration', 'BSc', 2011, 2014
-FROM public.profiles p JOIN auth.users u ON u.id = p.id
-WHERE u.email IN ('alexis.pm@example.com','reese.hr@example.com','taylor.ops@example.com','bailey.finance@example.com','sasha.admin@example.com')
-ON CONFLICT DO NOTHING;
-
--- I) Project members: add more real staffing ----------------------------------
-WITH pjt AS (SELECT id, name FROM public.projects)
-INSERT INTO public.project_members (project_id, profile_id, role, start_date, hours, contribution)
-SELECT p.id, pr.id, 'QA Engineer',        CURRENT_DATE - INTERVAL '80 days', 30, 'Test plans, regression'
-FROM pjt p
-JOIN public.profiles pr ON TRUE
-JOIN auth.users u ON u.id = pr.id AND u.email = 'charlie.qa@example.com'
-WHERE p.name = 'Donation Portal Revamp'
-UNION ALL
-SELECT p.id, pr.id, 'DevOps Engineer',     CURRENT_DATE - INTERVAL '85 days', 35, 'CI/CD pipelines'
-FROM pjt p
-JOIN public.profiles pr ON TRUE
-JOIN auth.users u ON u.id = pr.id AND u.email = 'taylor.devops@example.com'
-WHERE p.name = 'Donation Portal Revamp'
-UNION ALL
-SELECT p.id, pr.id, 'Project Manager',     CURRENT_DATE - INTERVAL '65 days', 20, 'Delivery & comms'
-FROM pjt p
-JOIN public.profiles pr ON TRUE
-JOIN auth.users u ON u.id = pr.id AND u.email = 'alexis.pm@example.com'
-WHERE p.name = 'City Services App'
-UNION ALL
-SELECT p.id, pr.id, 'UX Designer',         CURRENT_DATE - INTERVAL '55 days', 25, 'Flows & usability'
-FROM pjt p
-JOIN public.profiles pr ON TRUE
-JOIN auth.users u ON u.id = pr.id AND u.email = 'jamie.designer@example.com'
-WHERE p.name = 'City Services App'
-UNION ALL
-SELECT p.id, pr.id, 'Frontend Developer',  CURRENT_DATE - INTERVAL '50 days', 35, 'UI features'
-FROM pjt p
-JOIN public.profiles pr ON TRUE
-JOIN auth.users u ON u.id = pr.id AND u.email = 'morgan.frontend@example.com'
-WHERE p.name = 'City Services App'
-UNION ALL
-SELECT p.id, pr.id, 'BI Analyst',          CURRENT_DATE - INTERVAL '160 days', 20, 'Dashboards, KPIs'
-FROM pjt p
-JOIN public.profiles pr ON TRUE
-JOIN auth.users u ON u.id = pr.id AND u.email = 'blake.bi@example.com'
-WHERE p.name = 'Retail Insights'
-UNION ALL
-SELECT p.id, pr.id, 'Data Engineer',       CURRENT_DATE - INTERVAL '170 days', 30, 'Pipelines, dbt'
-FROM pjt p
-JOIN public.profiles pr ON TRUE
-JOIN auth.users u ON u.id = pr.id AND u.email = 'sam.data@example.com'
-WHERE p.name = 'Retail Insights'
-ON CONFLICT DO NOTHING;
-
--- J) Interests -----------------------------------------------------------------
-INSERT INTO public.profile_company_interests (profile_id, company_id)
-SELECT pr.id, c.id
-FROM public.profiles pr
-JOIN auth.users u ON u.id = pr.id
-JOIN public.companies c ON c.name IN ('Vipps','Telenor')
-WHERE u.email IN ('riley.backend@example.com','morgan.frontend@example.com')
-ON CONFLICT DO NOTHING;
-
-INSERT INTO public.profile_skill_interests (profile_id, skill_id, priority)
-SELECT pr.id, s.id, 4
-FROM public.profiles pr
-JOIN auth.users u ON u.id = pr.id
-JOIN public.skills s ON s.name IN ('Kubernetes','GraphQL')
-WHERE u.email IN ('taylor.devops@example.com','alex.engineer@example.com')
-ON CONFLICT DO NOTHING;
-
--- 13) Project hours by department ---------------------------------------------
-WITH p AS (SELECT id, name FROM public.projects),
-     d AS (SELECT id, name FROM public.departments)
-INSERT INTO public.project_department_hours (project_id, department_id, hours_required)
+-- 9) Projects (insert-if-missing, then update to canonical values) ------------
 -- Donation Portal Revamp
-SELECT p.id, d.id, v.hours
-FROM p
-JOIN (VALUES
-  ('Donation Portal Revamp','Tech',       240),
-  ('Donation Portal Revamp','Design',      80),
-  ('Donation Portal Revamp','Management',  40)
-) AS v(project, department, hours) ON v.project = p.name
-JOIN d ON d.name = v.department
-ON CONFLICT (project_id, department_id) DO NOTHING;
+INSERT INTO public.projects (client_id, name, description, start_date, status)
+SELECT c.id, 'Donation Portal Revamp', 'Vipps integration + analytics', DATE '2024-09-03', 'active'
+FROM public.clients c
+WHERE c.name = 'Pango Platform'
+  AND NOT EXISTS (SELECT 1 FROM public.projects p WHERE p.name = 'Donation Portal Revamp');
 
-WITH p AS (SELECT id, name FROM public.projects),
-     d AS (SELECT id, name FROM public.departments)
-INSERT INTO public.project_department_hours (project_id, department_id, hours_required)
+UPDATE public.projects
+SET description = 'Vipps integration + analytics',
+    start_date = DATE '2024-09-03',
+    status = 'active'
+WHERE name = 'Donation Portal Revamp';
+
 -- City Services App
-SELECT p.id, d.id, v.hours
-FROM p
-JOIN (VALUES
-  ('City Services App','Tech',     200),
-  ('City Services App','Design',   120),
-  ('City Services App','Strategy',  40)
-) AS v(project, department, hours) ON v.project = p.name
-JOIN d ON d.name = v.department
-ON CONFLICT (project_id, department_id) DO NOTHING;
+INSERT INTO public.projects (client_id, name, description, start_date, status)
+SELECT c.id, 'City Services App', 'Citizen portal MVP', DATE '2024-11-01', 'active'
+FROM public.clients c
+WHERE c.name = 'Trondheim Kommune'
+  AND NOT EXISTS (SELECT 1 FROM public.projects p WHERE p.name = 'City Services App');
 
-WITH p AS (SELECT id, name FROM public.projects),
-     d AS (SELECT id, name FROM public.departments)
-INSERT INTO public.project_department_hours (project_id, department_id, hours_required)
+UPDATE public.projects
+SET description = 'Citizen portal MVP',
+    start_date = DATE '2024-11-01',
+    status = 'active'
+WHERE name = 'City Services App';
+
 -- Retail Insights
-SELECT p.id, d.id, v.hours
-FROM p
-JOIN (VALUES
-  ('Retail Insights','Strategy', 220),
-  ('Retail Insights','Tech',      60)
-) AS v(project, department, hours) ON v.project = p.name
-JOIN d ON d.name = v.department
-ON CONFLICT (project_id, department_id) DO NOTHING;
+INSERT INTO public.projects (client_id, name, description, start_date, status)
+SELECT c.id, 'Retail Insights', 'Data warehouse modernization', DATE '2024-06-15', 'on_hold'
+FROM public.clients c
+WHERE c.name = 'Nordic Retail Group'
+  AND NOT EXISTS (SELECT 1 FROM public.projects p WHERE p.name = 'Retail Insights');
 
--- 14) (Optional) keep legacy projects.hours_required in sync if column exists --
-DO $$
-BEGIN
-  IF EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_schema = 'public'
-      AND table_name = 'projects'
-      AND column_name = 'hours_required'
-  ) THEN
-    UPDATE public.projects p
-    SET hours_required = sub.total
-    FROM (
-      SELECT project_id, SUM(hours_required)::int AS total
-      FROM public.project_department_hours
-      GROUP BY project_id
-    ) sub
-    WHERE sub.project_id = p.id;
-  END IF;
-END
-$$;
+UPDATE public.projects
+SET description = 'Data warehouse modernization',
+    start_date = DATE '2024-06-15',
+    status = 'on_hold'
+WHERE name = 'Retail Insights';
 
--- 15) Applications (consultant "I'm interested") -------------------------------
-WITH u AS (SELECT id, email FROM auth.users),
-     p AS (SELECT id, name FROM public.projects)
-INSERT INTO public.project_interest (project_id, profile_id, message)
-SELECT p.id, u.id, v.msg
-FROM u
-JOIN (VALUES
-  ('City Services App',      'fullstack@example.com',     'Happy to take backend or full-stack tasks.'),
-  ('City Services App',      'designer@example.com',      'Can help with flows and visuals.'),
-  ('Donation Portal Revamp', 'alex.engineer@example.com', 'I can assist with payments integration.'),
-  ('Retail Insights',        'data@example.com',          'Interested in modeling and dashboards.')
-) AS v(project, email, msg) ON v.email = u.email
+-- Internal / Bench
+INSERT INTO public.projects (client_id, name, description, start_date, status)
+SELECT c.id, 'Internal Initiatives / Bench', 'Internal tooling, docs, interviews', DATE '2024-12-01', 'active'
+FROM public.clients c
+WHERE c.name = 'Pango Platform'
+  AND NOT EXISTS (SELECT 1 FROM public.projects p WHERE p.name = 'Internal Initiatives / Bench');
+
+UPDATE public.projects
+SET description = 'Internal tooling, docs, interviews',
+    start_date  = DATE '2024-12-01',
+    status      = 'active'
+WHERE name = 'Internal Initiatives / Bench';
+
+-- 10) Project staffing (hours = per month) ------------------------------------
+WITH p AS (SELECT id, name FROM public.projects),
+     u AS (SELECT id, email FROM auth.users),
+     v(project, email, role, start_date, hours_per_month, contribution) AS (
+       VALUES
+       -- Donation Portal Revamp
+       ('Donation Portal Revamp','alex.engineer@example.com','Lead Engineer','2024-10-01',60,'Architecture & core features'),
+       ('Donation Portal Revamp','taylor.devops@example.com','DevOps Engineer','2024-10-01',35,'CI/CD pipelines'),
+       ('Donation Portal Revamp','charlie.qa@example.com','QA Engineer','2024-10-15',30,'Test plans, regression'),
+       -- City Services App
+       ('City Services App','alexis.pm@example.com','Project Manager','2024-12-01',20,'Delivery & comms'),
+       ('City Services App','jamie.designer@example.com','UX Designer','2024-12-01',25,'Flows & usability'),
+       ('City Services App','morgan.frontend@example.com','Frontend Dev','2024-12-15',35,'UI features'),
+       ('City Services App','riley.backend@example.com','Backend Dev','2024-12-15',30,'APIs & data'),
+       -- Retail Insights
+       ('Retail Insights','sam.data@example.com','Data Engineer','2024-07-01',30,'Pipelines, dbt'),
+       ('Retail Insights','blake.bi@example.com','BI Analyst','2024-07-01',20,'Dashboards, KPIs'),
+       -- Internal / Bench
+       ('Internal Initiatives / Bench','casey.ux@example.com','UX Researcher','2024-12-01',10,'Research & interviews'),
+       ('Internal Initiatives / Bench','robin.creative@example.com','Graphic Designer','2024-12-01',10,'Brand assets'),
+       ('Internal Initiatives / Bench','kendall.brand@example.com','Brand Designer','2024-12-01',10,'Brand system'),
+       ('Internal Initiatives / Bench','avery.motion@example.com','Motion Designer','2024-12-01',10,'Motion assets'),
+       ('Internal Initiatives / Bench','drew.ml@example.com','ML Engineer','2024-12-01',10,'Prototypes'),
+       ('Internal Initiatives / Bench','hayden.stats@example.com','Statistician','2024-12-01',10,'Experiment design'),
+       ('Internal Initiatives / Bench','taylor.ops@example.com','Operations Coordinator','2024-12-01',10,'Process improvements'),
+       ('Internal Initiatives / Bench','reese.hr@example.com','HR Specialist','2024-12-01',10,'Hiring & onboarding'),
+       ('Internal Initiatives / Bench','bailey.finance@example.com','Financial Analyst','2024-12-01',10,'Forecasting'),
+       ('Internal Initiatives / Bench','sasha.admin@example.com','Admin','2024-12-01',10,'Admin & docs')
+     )
+INSERT INTO public.project_members (project_id, profile_id, role, start_date, end_date, hours, contribution)
+SELECT p.id, u.id, v.role, v.start_date::date, NULL, v.hours_per_month, v.contribution
+FROM v
 JOIN p ON p.name = v.project
-ON CONFLICT (project_id, profile_id) DO NOTHING;
+JOIN u ON u.email = v.email
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.project_members pm
+  WHERE pm.project_id = p.id AND pm.profile_id = u.id
+);
 
--- 16) Enrich other projects with skills (for nicer UI) -------------------------
+-- 11) Project skills -----------------------------------------------------------
+WITH p AS (SELECT id, name FROM public.projects),
+     s AS (SELECT id, name FROM public.skills)
+INSERT INTO public.project_skills (project_id, skill_id)
+SELECT p.id, s.id
+FROM p, s
+WHERE p.name = 'Donation Portal Revamp'
+  AND s.name IN ('Supabase','PostgreSQL','Next.js','TypeScript','CI/CD')
+  AND NOT EXISTS (SELECT 1 FROM public.project_skills ps WHERE ps.project_id = p.id AND ps.skill_id = s.id);
+
 WITH p AS (SELECT id, name FROM public.projects),
      s AS (SELECT id, name FROM public.skills)
 INSERT INTO public.project_skills (project_id, skill_id)
@@ -886,7 +375,7 @@ SELECT p.id, s.id
 FROM p, s
 WHERE p.name = 'City Services App'
   AND s.name IN ('React','Next.js','TypeScript','Tailwind CSS','Figma')
-ON CONFLICT DO NOTHING;
+  AND NOT EXISTS (SELECT 1 FROM public.project_skills ps WHERE ps.project_id = p.id AND ps.skill_id = s.id);
 
 WITH p AS (SELECT id, name FROM public.projects),
      s AS (SELECT id, name FROM public.skills)
@@ -895,12 +384,136 @@ SELECT p.id, s.id
 FROM p, s
 WHERE p.name = 'Retail Insights'
   AND s.name IN ('Python','dbt','Airflow','Power BI','BigQuery')
-ON CONFLICT DO NOTHING;
+  AND NOT EXISTS (SELECT 1 FROM public.project_skills ps WHERE ps.project_id = p.id AND ps.skill_id = s.id);
 
--- 17) (Optional) Ensure projects storage bucket exists -------------------------
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('projects','projects', true)
-ON CONFLICT (id) DO NOTHING;
+-- 12) Interests ----------------------------------------------------------------
+INSERT INTO public.profile_company_interests (profile_id, company_id)
+SELECT u.id, c.id
+FROM auth.users u
+JOIN public.companies c ON c.name IN ('Vipps','Kahoot!')
+WHERE u.email = 'alex.engineer@example.com'
+  AND NOT EXISTS (
+    SELECT 1 FROM public.profile_company_interests pci
+    WHERE pci.profile_id = u.id AND pci.company_id = c.id
+  );
 
--- 18) Final touch: refresh searchable view ------------------------------------
-REFRESH MATERIALIZED VIEW CONCURRENTLY public.consultant_search;
+INSERT INTO public.profile_skill_interests (profile_id, skill_id, priority)
+SELECT u.id, s.id, 5
+FROM auth.users u
+JOIN public.skills s ON s.name IN ('dbt','Airflow','BigQuery')
+WHERE u.email = 'sam.data@example.com'
+  AND NOT EXISTS (
+    SELECT 1 FROM public.profile_skill_interests psi
+    WHERE psi.profile_id = u.id AND psi.skill_id = s.id
+  );
+
+-- 13) Invitations (after users exist) -----------------------------------------
+INSERT INTO public.invitations (email, role, invited_by, token_hash, expires_at)
+SELECT 'newhire@example.com','consultant', a.id,
+       encode(extensions.digest('invite123','sha256'),'hex'),
+       TIMESTAMP '2025-01-15'
+FROM auth.users a
+WHERE a.email = 'admin@example.com'
+  AND NOT EXISTS (SELECT 1 FROM public.invitations i WHERE i.email = 'newhire@example.com');
+
+-- 14) Departmental planning (canonical) ---------------------------------------
+WITH p AS (SELECT id, name FROM public.projects),
+     d AS (SELECT id, name FROM public.departments)
+INSERT INTO public.project_department_hours (project_id, department_id, hours_required)
+SELECT p.id, d.id, v.hours
+FROM p
+JOIN (VALUES
+  ('Donation Portal Revamp','Tech',       240),
+  ('Donation Portal Revamp','Design',      80),
+  ('Donation Portal Revamp','Management',  40)
+) AS v(project, department, hours) ON v.project = p.name
+JOIN d ON d.name = v.department
+ON CONFLICT (project_id, department_id) DO UPDATE
+SET hours_required = EXCLUDED.hours_required;
+
+WITH p AS (SELECT id, name FROM public.projects),
+     d AS (SELECT id, name FROM public.departments)
+INSERT INTO public.project_department_hours (project_id, department_id, hours_required)
+SELECT p.id, d.id, v.hours
+FROM p
+JOIN (VALUES
+  ('City Services App','Tech',     200),
+  ('City Services App','Design',   120),
+  ('City Services App','Strategy',  40)
+) AS v(project, department, hours) ON v.project = p.name
+JOIN d ON d.name = v.department
+ON CONFLICT (project_id, department_id) DO UPDATE
+SET hours_required = EXCLUDED.hours_required;
+
+WITH p AS (SELECT id, name FROM public.projects),
+     d AS (SELECT id, name FROM public.departments)
+INSERT INTO public.project_department_hours (project_id, department_id, hours_required)
+SELECT p.id, d.id, v.hours
+FROM p
+JOIN (VALUES
+  ('Retail Insights','Strategy', 220),
+  ('Retail Insights','Tech',      60)
+) AS v(project, department, hours) ON v.project = p.name
+JOIN d ON d.name = v.department
+ON CONFLICT (project_id, department_id) DO UPDATE
+SET hours_required = EXCLUDED.hours_required;
+
+-- 15) Availability (12 months; commitments derived from staffing) -------------
+WITH months AS (
+  SELECT (DATE '2025-01-01' + (n || ' months')::interval)::date AS m
+  FROM generate_series(0,11) AS g(n)
+),
+avail AS (  -- deterministic hours_available by primary department
+  SELECT p.id AS profile_id, mo.m AS month,
+         CASE d.name WHEN 'Tech' THEN 160 WHEN 'Design' THEN 150
+                     WHEN 'Strategy' THEN 160 WHEN 'Management' THEN 140
+                     ELSE 160 END AS hours_available
+  FROM public.profiles p
+  JOIN auth.users u ON u.id = p.id
+  JOIN public.profiles_departments pd ON pd.profile_id = p.id AND pd.is_primary IS TRUE
+  JOIN public.departments d ON d.id = pd.department_id
+  CROSS JOIN months mo
+),
+pm_monthly AS (  -- sum hours_per_month for months covered by each membership
+  SELECT pm.profile_id, mo.m AS month, SUM(pm.hours)::int AS monthly_committed
+  FROM public.project_members pm
+  JOIN months mo
+    ON pm.start_date <= mo.m
+   AND (pm.end_date IS NULL OR pm.end_date >= mo.m)
+  GROUP BY pm.profile_id, mo.m
+)
+INSERT INTO public.availability_months (profile_id, month, hours_available, hours_committed)
+SELECT a.profile_id, a.month, a.hours_available, COALESCE(p.monthly_committed, 0) AS hours_committed
+FROM avail a
+LEFT JOIN pm_monthly p
+  ON p.profile_id = a.profile_id AND p.month = a.month
+ON CONFLICT (profile_id, month) DO UPDATE
+SET hours_available = EXCLUDED.hours_available,
+    hours_committed = EXCLUDED.hours_committed;
+
+-- 16) Applications ("I'm interested") -----------------------------------------
+WITH u AS (SELECT id, email FROM auth.users),
+     p AS (SELECT id, name FROM public.projects),
+     v(project, email, msg) AS (
+       VALUES
+       ('City Services App','morgan.frontend@example.com','Happy to take frontend tasks.'),
+       ('City Services App','jamie.designer@example.com','Can help with flows and visuals.'),
+       ('Donation Portal Revamp','alex.engineer@example.com','I can assist with payments integration.'),
+       ('Retail Insights','sam.data@example.com','Interested in modeling and dashboards.')
+     )
+INSERT INTO public.project_interest (project_id, profile_id, message)
+SELECT p.id, u.id, v.msg
+FROM v
+JOIN u ON u.email = v.email
+JOIN p ON p.name = v.project
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.project_interest pi
+  WHERE pi.project_id = p.id AND pi.profile_id = u.id
+);
+
+-- 17) Final touch: refresh materialized view (assumes it exists)
+REFRESH MATERIALIZED VIEW public.consultant_search;
+
+-- =============================================================================
+-- End of seed
+-- =============================================================================
