@@ -7,7 +7,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { LoginForm } from "./ui/LoginForm";
-import { login } from "./actions";
 
 export default function LoginPage() {
   return (

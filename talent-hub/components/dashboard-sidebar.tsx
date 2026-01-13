@@ -1,29 +1,59 @@
-"use client"
+// components/dashboard-sidebar.tsx
+"use client";
 
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Users, UserPlus, Settings, BarChart3, Home, LogOut, User } from "lucide-react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { createClient } from "@/lib/supabase/client"
-import { useRouter } from "next/navigation"
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+  Users,
+  UserPlus,
+  Settings,
+  BarChart3,
+  Home,
+  LogOut,
+  User,
+  Building,
+  Briefcase,
+} from "lucide-react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import type { User as SupabaseUser } from "@supabase/supabase-js";
+import type { CurrentProfile } from "@/types/profile";
 
 interface DashboardSidebarProps {
-  user: any
-  profile: any
+  user: SupabaseUser;
+  profile: CurrentProfile; // includes is_admin
+}
+
+function getInitials(
+  displayName?: string | null,
+  first?: string | null,
+  last?: string | null
+) {
+  const name = (displayName ?? `${first ?? ""} ${last ?? ""}`).trim();
+  const parts = name.split(/\s+/).filter(Boolean);
+  const initials = parts
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase())
+    .join("");
+  return initials || "U";
 }
 
 export function DashboardSidebar({ user, profile }: DashboardSidebarProps) {
-  const pathname = usePathname()
-  const router = useRouter()
-  const supabase = createClient()
+  const pathname = usePathname();
+  const router = useRouter();
+  const supabase = createClient();
+
+  console.log(user, profile);
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    router.push("/auth/login")
-  }
+    await supabase.auth.signOut();
+    router.push("/auth/login");
+  };
 
-  const navigation = [
+  const isAdmin = !!profile.is_admin;
+
+  const navBase = [
     {
       name: "Dashboard",
       href: "/dashboard",
@@ -34,7 +64,7 @@ export function DashboardSidebar({ user, profile }: DashboardSidebarProps) {
       name: "My Profile",
       href: "/dashboard/profile",
       icon: User,
-      current: pathname === "/dashboard/profile",
+      current: pathname.startsWith("/dashboard/profile"),
     },
     {
       name: "Consultants",
@@ -42,29 +72,58 @@ export function DashboardSidebar({ user, profile }: DashboardSidebarProps) {
       icon: Users,
       current: pathname.startsWith("/dashboard/consultants"),
     },
-    ...(profile.role === "admin"
-      ? [
-          {
-            name: "Invite Users",
-            href: "/dashboard/invite",
-            icon: UserPlus,
-            current: pathname === "/dashboard/invite",
-          },
-          {
-            name: "Analytics",
-            href: "/dashboard/analytics",
-            icon: BarChart3,
-            current: pathname === "/dashboard/analytics",
-          },
-        ]
-      : []),
+    {
+      name: "Projects",
+      href: "/dashboard/projects",
+      icon: Briefcase,
+      current: pathname.startsWith("/dashboard/projects"),
+    },
+  ];
+
+  const navAdmin = isAdmin
+    ? [
+        {
+          name: "Departments",
+          href: "/dashboard/departments",
+          icon: Building,
+          current: pathname.startsWith("/dashboard/departments"),
+        },
+        {
+          name: "Invite Users",
+          href: "/dashboard/invite",
+          icon: UserPlus,
+          current: pathname.startsWith("/dashboard/invite"),
+        },
+        {
+          name: "Analytics",
+          href: "/dashboard/analytics",
+          icon: BarChart3,
+          current: pathname.startsWith("/dashboard/analytics"),
+        },
+      ]
+    : [];
+
+  const navTail = [
     {
       name: "Settings",
       href: "/dashboard/settings",
       icon: Settings,
-      current: pathname === "/dashboard/settings",
+      current: pathname.startsWith("/dashboard/settings"),
     },
-  ]
+  ];
+
+  const navigation = [...navBase, ...navAdmin, ...navTail];
+
+  const initials = getInitials(
+    profile.display_name,
+    profile.first_name,
+    profile.last_name
+  );
+  const fullName =
+    profile.display_name ||
+    [profile.first_name, profile.last_name].filter(Boolean).join(" ") ||
+    user.email ||
+    "User";
 
   return (
     <div className="flex flex-col w-64 bg-card border-r border-border">
@@ -74,34 +133,34 @@ export function DashboardSidebar({ user, profile }: DashboardSidebarProps) {
 
       <nav className="flex-1 px-4 py-6 space-y-2">
         {navigation.map((item) => {
-          const Icon = item.icon
+          const Icon = item.icon;
           return (
             <Link key={item.name} href={item.href}>
               <Button
                 variant={item.current ? "secondary" : "ghost"}
-                className={cn("w-full justify-start", item.current && "bg-secondary text-secondary-foreground")}
+                className={cn(
+                  "w-full justify-start",
+                  item.current && "bg-secondary text-secondary-foreground"
+                )}
               >
                 <Icon className="mr-3 h-4 w-4" />
                 {item.name}
               </Button>
             </Link>
-          )
+          );
         })}
       </nav>
 
       <div className="p-4 border-t border-border">
         <div className="flex items-center space-x-3 mb-4">
           <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-            <span className="text-sm font-medium text-primary">
-              {profile.first_name?.[0]}
-              {profile.last_name?.[0]}
-            </span>
+            <span className="text-sm font-medium text-primary">{initials}</span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">
-              {profile.first_name} {profile.last_name}
+            <p className="text-sm font-medium truncate">{fullName}</p>
+            <p className="text-xs text-muted-foreground">
+              {isAdmin ? "Admin" : "Member"}
             </p>
-            <p className="text-xs text-muted-foreground capitalize">{profile.role}</p>
           </div>
         </div>
         <Button
@@ -115,5 +174,5 @@ export function DashboardSidebar({ user, profile }: DashboardSidebarProps) {
         </Button>
       </div>
     </div>
-  )
+  );
 }

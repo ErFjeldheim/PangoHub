@@ -1,29 +1,31 @@
--- Create invitations table for admin invitation system
+-- Secure invitations (citext + token_hash)
+CREATE EXTENSION IF NOT EXISTS citext;
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 CREATE TABLE IF NOT EXISTS public.invitations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email TEXT NOT NULL UNIQUE,
-  role TEXT NOT NULL DEFAULT 'consultant' CHECK (role IN ('admin', 'consultant')),
+  email CITEXT NOT NULL UNIQUE,
+  role  TEXT   NOT NULL CHECK (role IN ('admin','consultant')) DEFAULT 'consultant',
   invited_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  token TEXT NOT NULL UNIQUE,
-  expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-  accepted_at TIMESTAMP WITH TIME ZONE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  token_hash TEXT NOT NULL UNIQUE,
+  expires_at TIMESTAMPTZ NOT NULL,
+  accepted_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Enable RLS
 ALTER TABLE public.invitations ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies for invitations
-CREATE POLICY "invitations_admin_only"
-  ON public.invitations FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles 
-      WHERE id = auth.uid() AND role = 'admin'
-    )
-  );
 
--- Allow public read for token validation during signup
-CREATE POLICY "invitations_public_token_read"
-  ON public.invitations FOR SELECT
-  USING (expires_at > NOW() AND accepted_at IS NULL);
+-- Add FK to profiles instead of auth.users
+ALTER TABLE public.invitations
+  DROP CONSTRAINT IF EXISTS invitations_invited_by_fkey;
+
+ALTER TABLE public.invitations
+  ADD CONSTRAINT invitations_invited_by_profiles_fkey
+  FOREIGN KEY (invited_by)
+  REFERENCES public.profiles(id)
+  ON DELETE CASCADE;
+
+-- Optional index for faster joins / lookups
+CREATE INDEX IF NOT EXISTS invitations_invited_by_idx
+  ON public.invitations (invited_by);

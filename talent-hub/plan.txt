@@ -1,0 +1,12 @@
+### Missing Functionality
+
+*   **Resource planning and allocation:** While the application tracks availability, it lacks a dedicated interface for proactive resource planning. A visual timeline or calendar-based view would allow managers to assign consultants to projects and identify potential scheduling conflicts.
+*   **Gantt charts for project timelines:** The current project view is limited to a simple list. Implementing Gantt charts would provide a more intuitive and comprehensive overview of project timelines, dependencies, and progress.
+*   **CRM Lite for client management:** The application stores client information but lacks a dedicated interface for managing client relationships. Adding a CRM-lite module would allow users to track interactions, manage contacts, and store important client-related documents.
+*   **Financial forecasting:** The application could be enhanced with financial forecasting capabilities. By combining project data with consultant rates, the system could generate revenue projections and provide insights into the financial health of the business.
+
+### Visualization Improvements
+
+*   **Interactive charts and graphs:** The analytics page currently displays static charts. Replacing these with interactive charts would allow users to drill down into the data and gain deeper insights.
+*   **Heatmaps for skill distribution:** A heatmap visualization would provide a more intuitive way to represent skill distribution across departments, making it easier to identify skill gaps and areas of expertise.
+*   **Network graphs for consultant relationships:** A network graph could be used to visualize the relationships between consultants, projects, and departments, revealing hidden connections and collaboration patterns.
