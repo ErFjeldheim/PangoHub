@@ -209,9 +209,9 @@ export function EducationManager({ profileId }: EducationManagerProps) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="Bachelor's Degree">
-                  Bachelor's Degree
+                  Bachelors Degree
                 </SelectItem>
-                <SelectItem value="Master's Degree">Master's Degree</SelectItem>
+                <SelectItem value="Master's Degree">Masters Degree</SelectItem>
                 <SelectItem value="Doctorate">Doctorate</SelectItem>
                 <SelectItem value="Other">Other</SelectItem>
               </SelectContent>

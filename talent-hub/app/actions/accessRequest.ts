@@ -13,12 +13,6 @@ export type AccessRequest = {
   created_at: string;
 };
 
-type CreateAccessRequestInput = {
-  email: string;
-  name: string;
-  message: string;
-};
-
 export async function createAccessRequest(input: {
   email: string;
   name: string;

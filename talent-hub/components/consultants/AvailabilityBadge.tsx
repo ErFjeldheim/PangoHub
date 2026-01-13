@@ -1,6 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-
-type AvailabilityStatus = "available" | "partly" | "busy" | "unavailable";
+import { type AvailabilityStatus } from "@/types/consultant";
 
 function getStatusColor(status?: AvailabilityStatus) {
   switch (status) {

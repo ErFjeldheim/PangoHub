@@ -1,13 +1,13 @@
-import { getCurrentUser } from "@/lib/auth"
-import { redirect } from "next/navigation"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
+import { getCurrentUser } from "@/lib/auth/server-auth";
+import { redirect } from "next/navigation";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export default async function HomePage() {
-  const user = await getCurrentUser()
+  const user = await getCurrentUser();
 
   if (user) {
-    redirect("/dashboard")
+    redirect("/dashboard");
   }
 
   return (
@@ -15,7 +15,9 @@ export default async function HomePage() {
       <div className="text-center space-y-6 max-w-md">
         <div className="space-y-2">
           <h1 className="text-4xl font-bold text-primary">Pango Talent Hub</h1>
-          <p className="text-muted-foreground">Professional consultant management system for internal teams</p>
+          <p className="text-muted-foreground">
+            Professional consultant management system for internal teams
+          </p>
         </div>
 
         <div className="space-y-4">
@@ -26,7 +28,11 @@ export default async function HomePage() {
           </Link>
 
           <Link href="/auth/request-access">
-            <Button variant="outline" size="lg" className="w-full bg-transparent">
+            <Button
+              variant="outline"
+              size="lg"
+              className="w-full bg-transparent"
+            >
               Request Access
             </Button>
           </Link>
@@ -37,5 +43,5 @@ export default async function HomePage() {
         </p>
       </div>
     </div>
-  )
+  );
 }

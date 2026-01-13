@@ -1,7 +1,13 @@
+// components/consultants/ConsultantEducation.tsx
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GraduationCap } from "lucide-react";
+import type { Education } from "@/types/consultant";
 
-export function ConsultantEducation({ educations }: { educations: any[] }) {
+export function ConsultantEducation({
+  educations,
+}: {
+  educations: Education[];
+}) {
   return (
     <Card className="border-border/40 shadow-sm hover:shadow-md transition-shadow">
       <CardHeader className="pb-4">

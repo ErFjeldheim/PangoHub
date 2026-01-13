@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { searchConsultants } from "@/lib/actions/consultants";
+import { searchConsultants } from "@/app/actions/consultants";
 import { ConsultantGrid } from "@/components/consultants/ConsultantGrid";
 import { ConsultantEmptyState } from "@/components/consultants/ConsultantEmptyState";
 import type { Consultant } from "@/types/consultant";

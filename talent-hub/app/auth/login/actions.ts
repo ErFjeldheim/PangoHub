@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 
 function expandError(err: unknown) {
   if (!err) return null;
-  const e = err as any;
+  const e = err as Record<string, unknown>;
   try {
     return JSON.stringify(e, Object.getOwnPropertyNames(e));
   } catch {
@@ -27,7 +27,6 @@ export async function login(
 
   const supabase = await createClient();
 
-  // 1) Preflight: make sure anon → PostgREST works (schema/permissions issues show up here)
   try {
     const pre = await supabase.from("profiles").select("id").limit(1);
     if (pre.error) {
@@ -38,17 +37,15 @@ export async function login(
           (pre.error.details ? ` — ${pre.error.details}` : ""),
       };
     }
-  } catch (e) {
+  } catch (e: unknown) {
     console.error("Preflight (anon) threw:", expandError(e));
     return { error: "DB preflight threw. Check server logs." };
   }
 
-  // 2) Auth: this is where GoTrue talks to Postgres
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
     console.error("Auth signIn error:", expandError(error));
-    // Surface something the user can read, but keep details in console.
     return {
       error:
         error.message === "Database error querying schema"
@@ -57,6 +54,5 @@ export async function login(
     };
   }
 
-  // 3) Success → redirect
   redirect("/dashboard");
 }

@@ -12,11 +12,13 @@ import { ConsultantAvailability } from "@/components/consultants/ConsultantAvail
 import type { Availability } from "@/components/consultants/ConsultantAvailability";
 import { Pencil, Briefcase, MapPin, Calendar } from "lucide-react";
 
+import { Consultant, Skill, Experience, Education } from "@/types/consultant";
+
 type Props = {
-  consultant: any;
-  skills: any[];
-  experiences: any[];
-  educations: any[];
+  consultant: Consultant;
+  skills: Skill[];
+  experiences: Experience[];
+  educations: Education[];
   currentAvailability?: Availability | null;
   user?: { id: string } | null;
 };

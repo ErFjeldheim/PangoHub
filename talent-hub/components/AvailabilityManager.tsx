@@ -100,7 +100,7 @@ export function AvailabilityManager({ profileId }: AvailabilityManagerProps) {
       try {
         const rows = await getAvailabilityNextSixMonths(profileId);
         if (!cancelled) setAvailability(rows);
-      } catch (err: any) {
+      } catch (err: Error | unknown) {
         console.error(err);
         toast.error("Failed to fetch availability");
         if (!cancelled) {
@@ -152,7 +152,7 @@ export function AvailabilityManager({ profileId }: AvailabilityManagerProps) {
           year: "numeric",
         });
         toast.success(`Availability for ${pretty} saved successfully`);
-      } catch (err: any) {
+      } catch (err: Error | unknown) {
         console.error(err);
         toast.error(`Failed to save availability for ${month}`);
       } finally {

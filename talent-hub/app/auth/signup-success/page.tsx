@@ -13,7 +13,7 @@ export default function SignUpSuccessPage() {
           </CardHeader>
           <CardContent className="text-center space-y-4">
             <p className="text-sm text-muted-foreground">
-              We've sent you a verification email. Please click the link in the email to activate your account and
+              We&apos;ve sent you a verification email. Please click the link in the email to activate your account and
               complete the setup process.
             </p>
             <Link href="/auth/login">

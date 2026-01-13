@@ -1,8 +1,8 @@
 -- =============================================================================
--- Deterministic, realistic seed.sql (Supabase seeder-safe)
+-- Deterministic, realistic seed.sql (Supabase seeder-safe) — RELATIVE DATES
+-- Uses helper functions created via migration (seed_helpers).
 -- =============================================================================
 -- Conventions:
--- - Base month anchor: 2025-01-01
 -- - project_members.hours = planned HOURS PER MONTH
 -- - availability_months.hours_committed is derived from staffing
 -- =============================================================================
@@ -207,19 +207,25 @@ FROM mgmt m
 JOIN skills s ON s.name IN ('CI/CD','Power BI','PostgreSQL','Node.js')
 ON CONFLICT DO NOTHING;
 
--- 6) Experiences / Educations (deterministic dates) ---------------------------
+-- 6) Experiences / Educations (relative dates) --------------------------------
 INSERT INTO public.experiences (profile_id, org, role, start_date, end_date, type, description)
-SELECT p.id,'Pango Consulting','Senior Software Engineer','2021-01-01',NULL,'job','Next.js + Supabase platform; RLS + FTS.'
+SELECT p.id,'Pango Consulting','Senior Software Engineer',
+       (current_date - interval '4 years')::date, NULL,
+       'job','Next.js + Supabase platform; RLS + FTS.'
 FROM public.profiles p JOIN auth.users u ON u.id = p.id WHERE u.email = 'alex.engineer@example.com'
 ON CONFLICT DO NOTHING;
 
 INSERT INTO public.experiences (profile_id, org, role, start_date, end_date, type, description)
-SELECT p.id,'Bright Apps','Product Designer','2020-02-01',NULL,'job','E2E product design; a11y/responsive.'
+SELECT p.id,'Bright Apps','Product Designer',
+       (current_date - interval '5 years' - interval '2 months')::date, NULL,
+       'job','E2E product design; a11y/responsive.'
 FROM public.profiles p JOIN auth.users u ON u.id = p.id WHERE u.email = 'jamie.designer@example.com'
 ON CONFLICT DO NOTHING;
 
 INSERT INTO public.experiences (profile_id, org, role, start_date, end_date, type, description)
-SELECT p.id,'DataWorks','Data Engineer','2022-03-01',NULL,'job','Airflow/dbt pipelines; ML models.'
+SELECT p.id,'DataWorks','Data Engineer',
+       (current_date - interval '3 years' - interval '10 months')::date, NULL,
+       'job','Airflow/dbt pipelines; ML models.'
 FROM public.profiles p JOIN auth.users u ON u.id = p.id WHERE u.email = 'sam.data@example.com'
 ON CONFLICT DO NOTHING;
 
@@ -238,21 +244,21 @@ SELECT p.id, 'University of Oslo','Data Science','MSc',2014,2019
 FROM public.profiles p JOIN auth.users u ON u.id = p.id WHERE u.email = 'sam.data@example.com'
 ON CONFLICT DO NOTHING;
 
--- 7) Compensation (deterministic upsert) --------------------------------------
+-- 7) Compensation (relative upsert) --------------------------------------------
 INSERT INTO public.compensation (profile_id, hourly_rate, currency, valid_from)
-SELECT p.id, 1200, 'NOK', DATE '2025-01-01'
+SELECT p.id, 1200, 'NOK', public.seed_param_date('month0')
 FROM public.profiles p JOIN auth.users u ON u.id = p.id WHERE u.email = 'alex.engineer@example.com'
 ON CONFLICT (profile_id) DO UPDATE
 SET hourly_rate = EXCLUDED.hourly_rate, currency = EXCLUDED.currency, valid_from = EXCLUDED.valid_from;
 
 INSERT INTO public.compensation (profile_id, hourly_rate, currency, valid_from)
-SELECT p.id, 900, 'NOK', DATE '2025-01-01'
+SELECT p.id, 900, 'NOK', public.seed_param_date('month0')
 FROM public.profiles p JOIN auth.users u ON u.id = p.id WHERE u.email = 'jamie.designer@example.com'
 ON CONFLICT (profile_id) DO UPDATE
 SET hourly_rate = EXCLUDED.hourly_rate, currency = EXCLUDED.currency, valid_from = EXCLUDED.valid_from;
 
 INSERT INTO public.compensation (profile_id, hourly_rate, currency, valid_from)
-SELECT p.id, 1100, 'NOK', DATE '2025-01-01'
+SELECT p.id, 1100, 'NOK', public.seed_param_date('month0')
 FROM public.profiles p JOIN auth.users u ON u.id = p.id WHERE u.email = 'sam.data@example.com'
 ON CONFLICT (profile_id) DO UPDATE
 SET hourly_rate = EXCLUDED.hourly_rate, currency = EXCLUDED.currency, valid_from = EXCLUDED.valid_from;
@@ -269,87 +275,102 @@ ON CONFLICT (name) DO NOTHING;
 -- 9) Projects (insert-if-missing, then update to canonical values) ------------
 -- Donation Portal Revamp
 INSERT INTO public.projects (client_id, name, description, start_date, status)
-SELECT c.id, 'Donation Portal Revamp', 'Vipps integration + analytics', DATE '2024-09-03', 'active'
+SELECT c.id, 'Donation Portal Revamp', 'Vipps integration + analytics', public.seed_param_date('donation_start'), 'active'
 FROM public.clients c
 WHERE c.name = 'Pango Platform'
   AND NOT EXISTS (SELECT 1 FROM public.projects p WHERE p.name = 'Donation Portal Revamp');
 
 UPDATE public.projects
 SET description = 'Vipps integration + analytics',
-    start_date = DATE '2024-09-03',
+    start_date = public.seed_param_date('donation_start'),
     status = 'active'
 WHERE name = 'Donation Portal Revamp';
 
 -- City Services App
 INSERT INTO public.projects (client_id, name, description, start_date, status)
-SELECT c.id, 'City Services App', 'Citizen portal MVP', DATE '2024-11-01', 'active'
+SELECT c.id, 'City Services App', 'Citizen portal MVP', public.seed_param_date('city_start'), 'active'
 FROM public.clients c
 WHERE c.name = 'Trondheim Kommune'
   AND NOT EXISTS (SELECT 1 FROM public.projects p WHERE p.name = 'City Services App');
 
 UPDATE public.projects
 SET description = 'Citizen portal MVP',
-    start_date = DATE '2024-11-01',
+    start_date = public.seed_param_date('city_start'),
     status = 'active'
 WHERE name = 'City Services App';
 
 -- Retail Insights
 INSERT INTO public.projects (client_id, name, description, start_date, status)
-SELECT c.id, 'Retail Insights', 'Data warehouse modernization', DATE '2024-06-15', 'on_hold'
+SELECT c.id, 'Retail Insights', 'Data warehouse modernization', public.seed_param_date('retail_start'), 'on_hold'
 FROM public.clients c
 WHERE c.name = 'Nordic Retail Group'
   AND NOT EXISTS (SELECT 1 FROM public.projects p WHERE p.name = 'Retail Insights');
 
 UPDATE public.projects
 SET description = 'Data warehouse modernization',
-    start_date = DATE '2024-06-15',
+    start_date = public.seed_param_date('retail_start'),
     status = 'on_hold'
 WHERE name = 'Retail Insights';
 
 -- Internal / Bench
 INSERT INTO public.projects (client_id, name, description, start_date, status)
-SELECT c.id, 'Internal Initiatives / Bench', 'Internal tooling, docs, interviews', DATE '2024-12-01', 'active'
+SELECT c.id, 'Internal Initiatives / Bench', 'Internal tooling, docs, interviews', public.seed_param_date('bench_start'), 'active'
 FROM public.clients c
 WHERE c.name = 'Pango Platform'
   AND NOT EXISTS (SELECT 1 FROM public.projects p WHERE p.name = 'Internal Initiatives / Bench');
 
 UPDATE public.projects
 SET description = 'Internal tooling, docs, interviews',
-    start_date  = DATE '2024-12-01',
+    start_date  = public.seed_param_date('bench_start'),
     status      = 'active'
 WHERE name = 'Internal Initiatives / Bench';
 
 -- 10) Project staffing (hours = per month) ------------------------------------
 WITH p AS (SELECT id, name FROM public.projects),
      u AS (SELECT id, email FROM auth.users),
-     v(project, email, role, start_date, hours_per_month, contribution) AS (
+     v(project, email, role, start_offset_days, hours_per_month, contribution) AS (
        VALUES
        -- Donation Portal Revamp
-       ('Donation Portal Revamp','alex.engineer@example.com','Lead Engineer','2024-10-01',60,'Architecture & core features'),
-       ('Donation Portal Revamp','taylor.devops@example.com','DevOps Engineer','2024-10-01',35,'CI/CD pipelines'),
-       ('Donation Portal Revamp','charlie.qa@example.com','QA Engineer','2024-10-15',30,'Test plans, regression'),
+       ('Donation Portal Revamp','alex.engineer@example.com','Lead Engineer', 0, 60,'Architecture & core features'),
+       ('Donation Portal Revamp','taylor.devops@example.com','DevOps Engineer', 0, 35,'CI/CD pipelines'),
+       ('Donation Portal Revamp','charlie.qa@example.com','QA Engineer', 14, 30,'Test plans, regression'),
        -- City Services App
-       ('City Services App','alexis.pm@example.com','Project Manager','2024-12-01',20,'Delivery & comms'),
-       ('City Services App','jamie.designer@example.com','UX Designer','2024-12-01',25,'Flows & usability'),
-       ('City Services App','morgan.frontend@example.com','Frontend Dev','2024-12-15',35,'UI features'),
-       ('City Services App','riley.backend@example.com','Backend Dev','2024-12-15',30,'APIs & data'),
+       ('City Services App','alexis.pm@example.com','Project Manager', 0, 20,'Delivery & comms'),
+       ('City Services App','jamie.designer@example.com','UX Designer', 0, 25,'Flows & usability'),
+       ('City Services App','morgan.frontend@example.com','Frontend Dev', 14, 35,'UI features'),
+       ('City Services App','riley.backend@example.com','Backend Dev', 14, 30,'APIs & data'),
        -- Retail Insights
-       ('Retail Insights','sam.data@example.com','Data Engineer','2024-07-01',30,'Pipelines, dbt'),
-       ('Retail Insights','blake.bi@example.com','BI Analyst','2024-07-01',20,'Dashboards, KPIs'),
+       ('Retail Insights','sam.data@example.com','Data Engineer', 0, 30,'Pipelines, dbt'),
+       ('Retail Insights','blake.bi@example.com','BI Analyst', 0, 20,'Dashboards, KPIs'),
        -- Internal / Bench
-       ('Internal Initiatives / Bench','casey.ux@example.com','UX Researcher','2024-12-01',10,'Research & interviews'),
-       ('Internal Initiatives / Bench','robin.creative@example.com','Graphic Designer','2024-12-01',10,'Brand assets'),
-       ('Internal Initiatives / Bench','kendall.brand@example.com','Brand Designer','2024-12-01',10,'Brand system'),
-       ('Internal Initiatives / Bench','avery.motion@example.com','Motion Designer','2024-12-01',10,'Motion assets'),
-       ('Internal Initiatives / Bench','drew.ml@example.com','ML Engineer','2024-12-01',10,'Prototypes'),
-       ('Internal Initiatives / Bench','hayden.stats@example.com','Statistician','2024-12-01',10,'Experiment design'),
-       ('Internal Initiatives / Bench','taylor.ops@example.com','Operations Coordinator','2024-12-01',10,'Process improvements'),
-       ('Internal Initiatives / Bench','reese.hr@example.com','HR Specialist','2024-12-01',10,'Hiring & onboarding'),
-       ('Internal Initiatives / Bench','bailey.finance@example.com','Financial Analyst','2024-12-01',10,'Forecasting'),
-       ('Internal Initiatives / Bench','sasha.admin@example.com','Admin','2024-12-01',10,'Admin & docs')
+       ('Internal Initiatives / Bench','casey.ux@example.com','UX Researcher', 0, 10,'Research & interviews'),
+       ('Internal Initiatives / Bench','robin.creative@example.com','Graphic Designer', 0, 10,'Brand assets'),
+       ('Internal Initiatives / Bench','kendall.brand@example.com','Brand Designer', 0, 10,'Brand system'),
+       ('Internal Initiatives / Bench','avery.motion@example.com','Motion Designer', 0, 10,'Motion assets'),
+       ('Internal Initiatives / Bench','drew.ml@example.com','ML Engineer', 0, 10,'Prototypes'),
+       ('Internal Initiatives / Bench','hayden.stats@example.com','Statistician', 0, 10,'Experiment design'),
+       ('Internal Initiatives / Bench','taylor.ops@example.com','Operations Coordinator', 0, 10,'Process improvements'),
+       ('Internal Initiatives / Bench','reese.hr@example.com','HR Specialist', 0, 10,'Hiring & onboarding'),
+       ('Internal Initiatives / Bench','bailey.finance@example.com','Financial Analyst', 0, 10,'Forecasting'),
+       ('Internal Initiatives / Bench','sasha.admin@example.com','Admin', 0, 10,'Admin & docs')
      )
 INSERT INTO public.project_members (project_id, profile_id, role, start_date, end_date, hours, contribution)
-SELECT p.id, u.id, v.role, v.start_date::date, NULL, v.hours_per_month, v.contribution
+SELECT
+  p.id,
+  u.id,
+  v.role,
+  (
+    CASE v.project
+      WHEN 'Donation Portal Revamp' THEN public.seed_param_date('donation_start')
+      WHEN 'City Services App' THEN public.seed_param_date('city_start')
+      WHEN 'Retail Insights' THEN public.seed_param_date('retail_start')
+      WHEN 'Internal Initiatives / Bench' THEN public.seed_param_date('bench_start')
+    END
+    + (v.start_offset_days || ' days')::interval
+  )::date,
+  NULL,
+  v.hours_per_month,
+  v.contribution
 FROM v
 JOIN p ON p.name = v.project
 JOIN u ON u.email = v.email
@@ -411,7 +432,7 @@ WHERE u.email = 'sam.data@example.com'
 INSERT INTO public.invitations (email, role, invited_by, token_hash, expires_at)
 SELECT 'newhire@example.com','consultant', a.id,
        encode(extensions.digest('invite123','sha256'),'hex'),
-       TIMESTAMP '2025-01-15'
+       public.seed_param_ts('invite_expires')
 FROM auth.users a
 WHERE a.email = 'admin@example.com'
   AND NOT EXISTS (SELECT 1 FROM public.invitations i WHERE i.email = 'newhire@example.com');
@@ -460,7 +481,7 @@ SET hours_required = EXCLUDED.hours_required;
 
 -- 15) Availability (12 months; commitments derived from staffing) -------------
 WITH months AS (
-  SELECT (DATE '2025-01-01' + (n || ' months')::interval)::date AS m
+  SELECT (public.seed_param_date('month0') + (n || ' months')::interval)::date AS m
   FROM generate_series(0,11) AS g(n)
 ),
 avail AS (  -- deterministic hours_available by primary department
@@ -511,8 +532,14 @@ WHERE NOT EXISTS (
   WHERE pi.project_id = p.id AND pi.profile_id = u.id
 );
 
--- 17) Final touch: refresh materialized view (assumes it exists)
-REFRESH MATERIALIZED VIEW public.consultant_search;
+-- 17) Final touch: refresh materialized view (assumes it exists) ---------------
+DO $$
+BEGIN
+  EXECUTE 'REFRESH MATERIALIZED VIEW public.consultant_search';
+EXCEPTION
+  WHEN undefined_table THEN
+    NULL;
+END $$;
 
 -- =============================================================================
 -- End of seed

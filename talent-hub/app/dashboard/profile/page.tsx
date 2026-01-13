@@ -1,35 +1,11 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { requireAuth, getCurrentProfile } from "@/lib/auth/server-auth";
 import { ProfileForm } from "@/components/profile/profile-form";
 import { ErrorDisplay } from "@/components/error-display";
 import { User, Sparkles } from "lucide-react";
 
 export default async function ProfilePage() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    redirect("/auth/login");
-  }
-
-  const { data: profile, error: profileError } = await supabase
-    .from("v_profiles_with_email")
-    .select("*")
-    .eq("id", user.id)
-    .single();
-
-  if (profileError) {
-    return (
-      <ErrorDisplay
-        title="Error fetching profile"
-        message="There was an error fetching your profile. Please try again later."
-      />
-    );
-  }
+  await requireAuth();
+  const profile = await getCurrentProfile();
 
   if (!profile) {
     return (

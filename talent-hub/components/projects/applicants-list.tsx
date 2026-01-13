@@ -17,14 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Users, CheckCircle } from "lucide-react";
-
-interface Applicant {
-  profile_id: string;
-  display_name: string;
-  title?: string | null;
-  message?: string | null;
-  created_at: string;
-}
+import { Applicant } from "@/types/project";
 
 interface ApplicantsListProps {
   projectId: string;

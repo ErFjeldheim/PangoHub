@@ -1,5 +1,17 @@
+// components/consultants/ConsultantContact.tsx
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Mail, Phone, MapPin, Linkedin, Github, Globe } from "lucide-react";
+import type { Consultant } from "@/types/consultant";
+
+type ContactableConsultant = Pick<
+  Consultant,
+  | "email"
+  | "phone"
+  | "location"
+  | "linkedin_url"
+  | "github_url"
+  | "portfolio_url"
+>;
 
 function ensureUrl(u?: string | null) {
   if (!u) return null;
@@ -11,7 +23,11 @@ function ensureUrl(u?: string | null) {
   }
 }
 
-export function ConsultantContact({ consultant }: { consultant: any }) {
+export function ConsultantContact({
+  consultant,
+}: {
+  consultant: ContactableConsultant;
+}) {
   const linkedin = ensureUrl(consultant.linkedin_url);
   const github = ensureUrl(consultant.github_url);
   const portfolio = ensureUrl(consultant.portfolio_url);

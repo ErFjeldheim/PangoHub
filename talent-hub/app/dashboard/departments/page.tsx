@@ -1,20 +1,14 @@
+// app/(dashboard)/departments/page.tsx
 import DepartmentsInformation from "@/components/DepartmentsInformation";
-import { getProfile } from "@/lib/actions/profile";
-import { redirect } from "next/navigation";
+import { requireAdmin } from "@/lib/auth/server-auth";
 
-const DepartmentsPage = async () => {
-  const { profile } = await getProfile();
-
-  if (profile.role !== "admin") {
-    // Or show a more friendly "Not Authorized" page
-    return redirect("/dashboard");
-  }
+export default async function DepartmentsPage() {
+  // Will redirect to /dashboard if the current user isn't an admin
+  await requireAdmin();
 
   return (
     <div className="p-6">
       <DepartmentsInformation />
     </div>
   );
-};
-
-export default DepartmentsPage;
+}

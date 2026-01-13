@@ -1,7 +1,13 @@
+// components/consultants/ConsultantExperience.tsx
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Briefcase } from "lucide-react";
+import type { Experience } from "@/types/consultant";
 
-export function ConsultantExperience({ experiences }: { experiences: any[] }) {
+export function ConsultantExperience({
+  experiences,
+}: {
+  experiences: Experience[];
+}) {
   return (
     <Card className="border-border/40 shadow-sm hover:shadow-md transition-shadow">
       <CardHeader className="pb-4">

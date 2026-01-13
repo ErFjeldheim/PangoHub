@@ -7,8 +7,10 @@ import {
   listProjectFiles,
   getProjectOwner,
   listProjectUpdates,
-
-  // form/server actions (centralized in actions/projects.ts)
+  // small helpers you add in projects actions:
+  isProjectMember,
+  hasAppliedToProject,
+  // form/server actions
   addSkillAction,
   removeSkillAction,
   upsertDeptHoursAction,
@@ -24,8 +26,12 @@ import {
   createProjectUpdate,
   deleteProjectUpdate,
 } from "@/app/actions/projects";
-import { createClient } from "@/lib/supabase/server";
+import { getAllSkills } from "@/app/actions/skills";
+import { getAllDepartmentsBasic } from "@/app/actions/departments";
+import { getCurrentUser, isAdmin } from "@/lib/auth/server-auth";
 import { notFound } from "next/navigation";
+
+import type { ProjectStatus } from "@/types/project";
 
 import { DepartmentHoursTable } from "@/components/projects/department-hours-table";
 import { RequiredSkills } from "@/components/projects/required-skills";
@@ -52,7 +58,7 @@ import { Building2, Calendar, Crown, Trash2 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-const statusColors: Record<string, string> = {
+const statusColors: Record<ProjectStatus, string> = {
   planned: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
   active:
     "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
@@ -67,70 +73,54 @@ export default async function DashboardProjectPage({
   params: { id: string };
 }) {
   const projectId = params.id;
-  const supabase = await createClient();
 
-  // Who am I? admin?
-  const { data: auth } = await supabase.auth.getUser();
-  const userId = auth?.user?.id ?? null;
+  // Auth / role
+  const [user, adminFlag] = await Promise.all([getCurrentUser(), isAdmin()]);
+  const userId = user?.id ?? null;
+  const isAdminUser = !!adminFlag;
 
-  let isAdmin = false;
-  if (userId) {
-    const { data } = await supabase.rpc("is_admin", { uid: userId });
-    isAdmin = !!data;
-  }
+  // Kick off independent reads in parallel (only call admin-only endpoints when needed)
+  const [
+    project,
+    owner,
+    deptHours,
+    files,
+    updates,
+    applicantsOrEmpty,
+    skillsOrNull,
+    deptsOrNull,
+    isMemberFlag,
+    iAppliedFlag,
+  ] = await Promise.all([
+    getProjectDetail(projectId),
+    getProjectOwner(projectId),
+    listProjectDepartmentHours(projectId),
+    listProjectFiles(projectId),
+    listProjectUpdates(projectId),
+    isAdminUser ? listApplicants(projectId) : Promise.resolve([]),
+    isAdminUser ? getAllSkills() : Promise.resolve(null),
+    isAdminUser ? getAllDepartmentsBasic() : Promise.resolve(null),
+    userId ? isProjectMember(projectId, userId) : Promise.resolve(false),
+    userId ? hasAppliedToProject(projectId, userId) : Promise.resolve(false),
+  ]);
 
-  // Project header & detail
-  const project = await getProjectDetail(projectId);
   if (!project) return notFound();
 
-  // Project owner
-  const owner = await getProjectOwner(projectId); // { profile_id, display_name } | null
+  console.log("project: ", project);
 
-  // Skills (for admin to add)
-  const { data: allSkills } = await supabase
-    .from("skills")
-    .select("id, name")
-    .order("name", { ascending: true });
+  const allSkills = skillsOrNull; // Skill[] | null
+  const allDepartments = deptsOrNull as Array<{
+    id: string;
+    name: string;
+  }> | null;
 
-  // Department hours configured on the project
-  const deptHours = await listProjectDepartmentHours(projectId);
+  const isMember = isMemberFlag;
+  const iApplied = iAppliedFlag && !isMember;
 
-  // All departments for admin dropdown
-  const { data: allDepartments } = await supabase
-    .from("departments")
-    .select("id, name")
-    .order("name", { ascending: true });
-
-  // Applicants (admins only)
-  const applicants = isAdmin ? await listApplicants(projectId) : [];
-
-  // Files
-  const files = await listProjectFiles(projectId);
-
-  // Membership: am I already on this project?
-  const isMember = !!project.members.find((m) => m.profile_id === userId);
-
-  // I already applied?
-  let iApplied = false;
-  if (userId && !isMember) {
-    const { data: myApp } = await supabase
-      .from("project_interest")
-      .select("project_id")
-      .match({ project_id: projectId, profile_id: userId })
-      .maybeSingle();
-    iApplied = !!myApp;
-  }
-
-  // Project updates (status/goals/notes) — visible to all; postable by owner/admin
-  const updates = await listProjectUpdates(projectId); // [{id,title,body,created_at,author:{id,display_name}}]
-
-  const canApply =
-    !!userId &&
-    !isMember &&
-    (project.status === "active" || project.status === "planned");
+  const applicants = applicantsOrEmpty; // Applicant[] (already filtered/typed by the action)
 
   const isOwner = !!(owner && owner.profile_id === userId);
-  const canPostUpdate = isOwner || isAdmin;
+  const canPostUpdate = isOwner || isAdminUser;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
@@ -167,10 +157,7 @@ export default async function DashboardProjectPage({
               )}
               <Badge
                 variant="secondary"
-                className={`${
-                  statusColors[project.status as keyof typeof statusColors] ||
-                  ""
-                } text-sm px-3 py-1`}
+                className={`${statusColors[project.status]} text-sm px-3 py-1`}
               >
                 {project.status}
               </Badge>
@@ -184,7 +171,7 @@ export default async function DashboardProjectPage({
           )}
 
           {/* Admin: set/change owner (pick from current members) */}
-          {isAdmin && project.members.length > 0 && (
+          {isAdminUser && project.members.length > 0 && (
             <form
               action={setProjectOwner}
               className="mt-3 flex items-end gap-2"
@@ -217,8 +204,8 @@ export default async function DashboardProjectPage({
           <div className="space-y-8">
             {/* Team (admins can remove/update members) */}
             <MembersList
-              members={project.members as any}
-              isAdmin={isAdmin}
+              members={project.members}
+              isAdmin={isAdminUser}
               projectId={projectId}
               updateAction={updateMemberAction}
               removeAction={removeMemberAction}
@@ -229,8 +216,8 @@ export default async function DashboardProjectPage({
               <DepartmentHoursTable
                 projectId={projectId}
                 deptHours={deptHours}
-                allDepartments={isAdmin ? allDepartments : null}
-                isAdmin={isAdmin}
+                allDepartments={isAdminUser ? allDepartments : null}
+                isAdmin={isAdminUser}
                 upsertAction={upsertDeptHoursAction}
                 removeAction={removeDeptHoursAction}
               />
@@ -240,8 +227,8 @@ export default async function DashboardProjectPage({
             <RequiredSkills
               projectId={projectId}
               skills={project.skills}
-              allSkills={isAdmin ? allSkills : null}
-              isAdmin={isAdmin}
+              allSkills={isAdminUser ? allSkills : null}
+              isAdmin={isAdminUser}
               addAction={addSkillAction}
               removeAction={removeSkillAction}
             />
@@ -250,7 +237,7 @@ export default async function DashboardProjectPage({
             <ProjectFiles
               projectId={projectId}
               files={files}
-              isAdmin={isAdmin}
+              isAdmin={isAdminUser}
               uploadAction={uploadFileAction}
               deleteAction={deleteFileAction}
             />
@@ -325,12 +312,17 @@ export default async function DashboardProjectPage({
                                 {u.title || "Update"}
                               </div>
                               <div className="text-xs text-muted-foreground">
-                                {new Date(u.created_at).toLocaleString()} •{" "}
-                                {u.author?.display_name ?? "Unknown"}
+                                {new Date(u.created_at).toLocaleString(
+                                  "nb-NO",
+                                  {
+                                    timeZone: "Europe/Oslo",
+                                  }
+                                )}{" "}
+                                • {u.author?.display_name ?? "Unknown"}
                               </div>
                             </div>
                           </div>
-                          {(isAdmin || isOwner) && (
+                          {(isAdminUser || isOwner) && (
                             <form action={deleteProjectUpdate}>
                               <input
                                 type="hidden"
@@ -366,7 +358,7 @@ export default async function DashboardProjectPage({
             </Card>
 
             {/* Applicants (admin) */}
-            {isAdmin && (
+            {isAdminUser && (
               <ApplicantsList
                 projectId={projectId}
                 applicants={applicants}

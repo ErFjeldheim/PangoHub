@@ -1,37 +1,55 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
-import { useState, useEffect } from "react"
-import { signUpWithInvitation, verifyInvitation } from "@/lib/actions/auth"
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect } from "react";
+import {
+  signUpWithInvitation,
+  verifyInvitation,
+} from "@/app/actions/invitations";
 
 export default function SignUpPage() {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [firstName, setFirstName] = useState("")
-  const [lastName, setLastName] = useState("")
-  const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [invitation, setInvitation] = useState<any>(null)
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const token = searchParams.get("token")
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [invitation, setInvitation] = useState<{
+    id: string;
+    email: string;
+    role: "admin" | "consultant";
+    invited_by: string;
+    token_hash: string;
+    expires_at: string;
+    accepted_at: string | null;
+    created_at: string;
+  } | null>(null);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token");
 
   useEffect(() => {
     const validateInvitation = async () => {
       if (!token) {
-        setError("Invalid invitation link")
-        return
+        setError("Invalid invitation link");
+        return;
       }
       // we need to get the email from the url as well, if it is not there, we can't verify
-      const emailFromUrl = searchParams.get('email');
+      const emailFromUrl = searchParams.get("email");
       if (!emailFromUrl) {
         setError("Invalid invitation link: missing email");
         return;
@@ -40,47 +58,47 @@ export default function SignUpPage() {
       const { invitation, error } = await verifyInvitation(token, emailFromUrl);
 
       if (error || !invitation) {
-        setError(error?.message || "Invalid or expired invitation")
-        return
+        setError(error?.message || "Invalid or expired invitation");
+        return;
       }
 
-      setInvitation(invitation)
-      setEmail(invitation.email)
-    }
+      setInvitation(invitation);
+      setEmail(invitation.email);
+    };
 
-    validateInvitation()
-  }, [token, searchParams])
+    validateInvitation();
+  }, [token, searchParams]);
 
   const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!invitation) return
+    e.preventDefault();
+    if (!invitation) return;
 
-    setIsLoading(true)
-    setError(null)
+    setIsLoading(true);
+    setError(null);
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match")
-      setIsLoading(false)
-      return
+      setError("Passwords do not match");
+      setIsLoading(false);
+      return;
     }
 
     const formData = new FormData();
-    formData.append('token', token || '');
-    formData.append('email', email);
-    formData.append('password', password);
-    formData.append('firstName', firstName);
-    formData.append('lastName', lastName);
+    formData.append("token", token || "");
+    formData.append("email", email);
+    formData.append("password", password);
+    formData.append("firstName", firstName);
+    formData.append("lastName", lastName);
 
     const { error } = await signUpWithInvitation(formData);
 
     if (error) {
-        setError(error.message);
+      setError(error.message);
     } else {
-        router.push("/auth/signup-success");
+      router.push("/auth/signup-success");
     }
 
-    setIsLoading(false)
-  }
+    setIsLoading(false);
+  };
 
   if (!invitation && !error) {
     return (
@@ -91,7 +109,7 @@ export default function SignUpPage() {
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   return (
@@ -99,13 +117,19 @@ export default function SignUpPage() {
       <div className="w-full max-w-sm">
         <Card>
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold">Join Pango Talent Hub</CardTitle>
-            <CardDescription>Complete your registration as a {invitation?.role}</CardDescription>
+            <CardTitle className="text-2xl font-bold">
+              Join Pango Talent Hub
+            </CardTitle>
+            <CardDescription>
+              Complete your registration as a {invitation?.role}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {error ? (
               <div className="text-center space-y-4">
-                <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">{error}</div>
+                <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+                  {error}
+                </div>
                 <Link href="/auth/login">
                   <Button variant="outline" className="w-full bg-transparent">
                     Back to Login
@@ -140,7 +164,14 @@ export default function SignUpPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
-                  <Input id="email" name="email" type="email" value={email} disabled className="bg-muted" />
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    value={email}
+                    disabled
+                    className="bg-muted"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="password">Password</Label>
@@ -172,5 +203,5 @@ export default function SignUpPage() {
         </Card>
       </div>
     </div>
-  )
+  );
 }

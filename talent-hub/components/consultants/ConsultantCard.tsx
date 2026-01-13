@@ -12,7 +12,7 @@ import { MapPin, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConsultantContactButtons } from "./ConsultantContactButtons";
 import { AvailabilityBadge } from "./AvailabilityBadge";
-import type { Consultant, AvailabilityStatus } from "@/types/consultant";
+import type { Consultant } from "@/types/consultant";
 
 export function ConsultantCard({ consultant }: { consultant: Consultant }) {
   const initials = `${consultant.first_name?.[0] ?? ""}${
@@ -21,7 +21,6 @@ export function ConsultantCard({ consultant }: { consultant: Consultant }) {
 
   return (
     <Card className="group hover:shadow-lg transition-all duration-300 border-border/40 hover:border-primary/20 overflow-hidden">
-
       <CardHeader className="pb-4 relative">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">

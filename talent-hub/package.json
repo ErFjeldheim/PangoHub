@@ -6,7 +6,8 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "types:db": "supabase gen types typescript --db-url \"postgresql://postgres:postgres@localhost:54322/postgres\" > types/supabase.ts"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.10",

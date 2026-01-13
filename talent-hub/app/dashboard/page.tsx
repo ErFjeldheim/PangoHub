@@ -1,38 +1,45 @@
 // app/dashboard/page.tsx
-import { getConsultantHomeData } from "@/app/actions/consultantHome";
-import { ConsultantDashboard } from "@/components/ConsultantDashboard";
+import { redirect } from "next/navigation";
+import {
+  getCurrentUser,
+  getCurrentProfile,
+  isAdmin,
+} from "@/lib/auth/server-auth";
+import { searchConsultants } from "@/app/actions/consultants";
+import { getActiveProjects } from "@/app/actions/projects";
+import {
+  ConsultantDashboard,
+  getConsultantHomeData,
+} from "@/components/consultant-dashboard";
+
 import { StatCard } from "@/components/StatCard";
 import DepartmentsInformation from "@/components/DepartmentsInformation";
-import { getConsultants, getProfile, getUser } from "@/app/actions/dashboard";
-import { getActiveProjects } from "@/app/actions/projects";
 import { Briefcase, Clock, TrendingUp, Users } from "lucide-react";
-import type { Consultant } from "@/types/consultant";
 
 export default async function DashboardPage() {
-  const data = await getConsultantHomeData();
-  if (!data) return null;
+  // Require auth
+  const user = await getCurrentUser();
+  if (!user) redirect("/auth/login");
 
-  // If admin: keep existing admin view
-  if (data.isAdmin) {
-    const user = await getUser();
-    const profile = await getProfile(user.id);
-    const consultants = await getConsultants();
-    const activeProjects = await getActiveProjects();
+  // If admin: render the admin dashboard
+  if (await isAdmin(user.id)) {
+    const profile = await getCurrentProfile(); // current user’s profile (for greeting)
+    const [consultants, activeProjects] = await Promise.all([
+      searchConsultants(""), // empty query => all consultants (typed)
+      getActiveProjects(),
+    ]);
 
-    const availableConsultants =
-      consultants?.filter(
-        (c: Consultant) => c.availability_status === "available"
-      ).length || 0;
+    const availableConsultants = consultants.filter(
+      (c) => c.availability_status === "available"
+    ).length;
 
-    const totalConsultants = consultants?.length || 0;
+    const totalConsultants = consultants.length;
 
     const avgExperience =
-      consultants && consultants.length > 0
+      consultants.length > 0
         ? Math.round(
-            consultants.reduce(
-              (acc, c: Consultant) => acc + (c.experience_years || 0),
-              0
-            ) / consultants.length
+            consultants.reduce((acc, c) => acc + (c.experience_years ?? 0), 0) /
+              consultants.length
           )
         : 0;
 
@@ -40,7 +47,7 @@ export default async function DashboardPage() {
       <div className="space-y-8">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
-            Welcome back, {profile.first_name}
+            Welcome back, {profile?.first_name ?? "Admin"}
           </h1>
           <p className="text-muted-foreground">
             Here&apos;s what&apos;s happening with your consultant network
@@ -81,6 +88,9 @@ export default async function DashboardPage() {
   }
 
   // Default: consultant dashboard
+  const data = await getConsultantHomeData();
+  if (!data) return null;
+
   return (
     <ConsultantDashboard
       displayName={data.displayName}

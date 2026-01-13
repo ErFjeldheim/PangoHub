@@ -49,7 +49,7 @@ export default async function ProjectsPage({
   // Fetch filtered projects
   const projects = await listProjects({
     search: searchParams?.q,
-    status: (searchParams?.status as any) ?? "all",
+    status: searchParams?.status ?? "all",
     department: searchParams?.dep,
   });
 

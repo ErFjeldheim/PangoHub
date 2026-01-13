@@ -32,7 +32,7 @@ export default async function DepartmentDetailPage({ params }: PageProps) {
 
   const totalConsultants = consultants.length;
   const availableConsultants = consultants.filter(
-    (c: any) => c.availability_status === "available"
+    (c: { availability_status: string | null }) => c.availability_status === "available"
   ).length;
 
   return (

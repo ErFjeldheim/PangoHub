@@ -30,9 +30,10 @@ import {
 import { SkillsManager } from "./SkillsManager";
 import { ExperienceManager } from "./ExperienceManager";
 import { EducationManager } from "./EducationManager";
+import { CurrentProfile } from "@/types/profile";
 
 interface ProfileFormProps {
-  profile: any;
+  profile: CurrentProfile;
 }
 
 /**

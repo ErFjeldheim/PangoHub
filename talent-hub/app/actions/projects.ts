@@ -1,78 +1,58 @@
 // app/actions/projects.ts
 "use server";
 
-import type { SupabaseClient } from "@supabase/supabase-js";
-import { createClient as createServerSupabaseClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { requireAdmin } from "@/lib/auth/server-auth";
+import { randomUUID } from "crypto";
+
+// Shared app-wide types
+import type {
+  ProjectStatus,
+  ProjectOverview,
+  ProjectDetail,
+  DepartmentProject,
+  DepartmentHour,
+  ProjectUpdate,
+  Applicant,
+} from "@/types/project";
 
 /* -----------------------------------------------------------------------------
    Helpers
 ----------------------------------------------------------------------------- */
 
-async function getServerClient(): Promise<SupabaseClient> {
-  // Your server client is async, always await it.
-  return await createServerSupabaseClient();
+// Normalizes a PostgREST embed that might be object | object[] | null
+function pickOne<T>(v: T | T[] | null | undefined): T | null {
+  return Array.isArray(v) ? v[0] ?? null : v ?? null;
 }
 
-async function requireAdmin(): Promise<void> {
-  const supabase = await getServerClient();
-
-  const {
-    data: { user },
-    error: authErr,
-  } = await supabase.auth.getUser();
-  if (authErr || !user) throw new Error("Not authenticated");
-
-  // DB-side source of truth for admins
-  const { data: isAdmin, error } = await supabase.rpc("is_admin", {
-    uid: user.id,
-  });
-  if (error) throw error;
-  if (!isAdmin) throw new Error("Forbidden");
+export async function isProjectMember(
+  projectId: string,
+  profileId: string
+): Promise<boolean> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("project_members")
+    .select("project_id")
+    .match({ project_id: projectId, profile_id: profileId })
+    .maybeSingle();
+  if (error) return false; // or throw; your call
+  return !!data;
 }
 
-/* -----------------------------------------------------------------------------
-   Types
------------------------------------------------------------------------------ */
-
-export type ProjectStatus = "planned" | "active" | "completed" | "on_hold";
-
-export type ProjectOverview = {
-  id: string;
-  name: string;
-  description: string | null;
-  status: ProjectStatus;
-  start_date: string | null;
-  end_date: string | null;
-  client_name: string | null;
-  consultant_count: number;
-  departments: string[] | null;
-  first_member_start: string | null;
-  last_member_end: string | null;
-  is_active: boolean;
-  duration_days: number | null;
-};
-
-export type ProjectDetail = {
-  id: string;
-  name: string;
-  description: string | null;
-  status: ProjectStatus;
-  start_date: string | null;
-  end_date: string | null;
-  client_name: string | null;
-  skills: { id: string; name: string }[];
-  members: Array<{
-    profile_id: string;
-    display_name: string;
-    title: string | null;
-    role: string | null;
-    hours: number | null;
-    start_date: string | null;
-    end_date: string | null;
-    contribution: string | null;
-  }>;
-};
+export async function hasAppliedToProject(
+  projectId: string,
+  profileId: string
+): Promise<boolean> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("project_interest")
+    .select("project_id")
+    .match({ project_id: projectId, profile_id: profileId })
+    .maybeSingle();
+  if (error) return false; // or throw
+  return !!data;
+}
 
 /* -----------------------------------------------------------------------------
    Reads (open to any signed-in user)
@@ -83,7 +63,7 @@ export async function listProjects(params?: {
   department?: string; // department name filter (matches array column)
   search?: string; // naive ilike on name/description (MVP)
 }) {
-  const supabase = await getServerClient();
+  const supabase = await createClient();
 
   let query = supabase
     .from("v_project_overview")
@@ -112,25 +92,51 @@ export async function listProjects(params?: {
 export async function getProjectDetail(
   projectId: string
 ): Promise<ProjectDetail | null> {
-  const supabase = await getServerClient();
+  const supabase = await createClient();
 
   // Header/basic fields from the view
+  type HeaderRow = {
+    id: string;
+    name: string | null;
+    description: string | null;
+    status: ProjectStatus | string;
+    start_date: string | null;
+    end_date: string | null;
+    client_name: string | null;
+  };
+
   const { data: header, error: hErr } = await supabase
     .from("v_project_overview")
     .select("*")
     .eq("id", projectId)
-    .maybeSingle();
+    .maybeSingle<HeaderRow>(); // 👈 type the row we expect
   if (hErr) throw hErr;
   if (!header) return null;
 
   // Skills joined via project_skills → skills
+  type SkillRow = { skills: { id: string; name: string } | null };
+
   const { data: skillsRows, error: sErr } = await supabase
     .from("project_skills")
-    .select("skills:skills(id,name)")
-    .eq("project_id", projectId);
+    .select("skills(id,name)")
+    .eq("project_id", projectId)
+    .returns<SkillRow[]>(); // 👈 each row has a single "skills" object (or null)
   if (sErr) throw sErr;
 
-  // Members with profile display info
+  // Members: belongs-to embed might be object OR array in TS, normalize it
+  type MemberRow = {
+    profile_id: string;
+    role: string | null;
+    hours: number | null;
+    start_date: string | null;
+    end_date: string | null;
+    contribution: string | null;
+    profile:
+      | { display_name: string; title: string | null }
+      | { display_name: string; title: string | null }[]
+      | null;
+  };
+
   const { data: membersRows, error: mErr } = await supabase
     .from("project_members")
     .select(
@@ -141,31 +147,43 @@ export async function getProjectDetail(
       start_date,
       end_date,
       contribution,
-      profiles!inner(display_name, title)
+      profile:profiles(display_name, title)
     `
     )
-    .eq("project_id", projectId);
+    .eq("project_id", projectId)
+    .returns<MemberRow[]>();
   if (mErr) throw mErr;
 
+  const members = (membersRows ?? [])
+    .map((row) => {
+      const prof = pickOne(row.profile);
+      if (!prof) return null; // RLS might hide it
+      return {
+        profile_id: row.profile_id,
+        display_name: prof.display_name,
+        title: prof.title,
+        role: row.role,
+        hours: row.hours,
+        start_date: row.start_date,
+        end_date: row.end_date,
+        contribution: row.contribution,
+      };
+    })
+    .filter((v): v is ProjectDetail["members"][number] => v !== null);
+
+  // Normalize nullables to match ProjectDetail
   return {
     id: header.id,
-    name: header.name,
-    description: header.description,
+    name: header.name ?? "", // 👈 coerce to string
+    description: header.description ?? null, // keep nullable
     status: header.status as ProjectStatus,
-    start_date: header.start_date,
-    end_date: header.end_date,
-    client_name: header.client_name,
-    skills: (skillsRows ?? []).map((row: any) => row.skills).filter(Boolean),
-    members: (membersRows ?? []).map((row: any) => ({
-      profile_id: row.profile_id,
-      display_name: row.profiles.display_name,
-      title: row.profiles.title,
-      role: row.role,
-      hours: row.hours,
-      start_date: row.start_date,
-      end_date: row.end_date,
-      contribution: row.contribution,
-    })),
+    start_date: header.start_date ?? null, // keep nullable
+    end_date: header.end_date ?? null, // keep nullable
+    client_name: header.client_name ?? null, // keep nullable
+    skills: (skillsRows ?? []).flatMap((row) =>
+      row.skills ? [row.skills] : []
+    ), // 👈 flatten single-object rows safely
+    members,
   };
 }
 
@@ -173,48 +191,48 @@ export async function getProjectDetail(
  * Department-scoped list using your existing SQL function:
  * get_projects_for_department(p_department_id uuid)
  */
-export type DepartmentProject = {
-  id: string;
-  name: string;
-  description: string | null;
-  start_date: string | null;
-  end_date: string | null;
-  status: "planned" | "active" | "completed" | "on_hold";
-  client_name: string | null;
-};
-
 export async function getProjectsForDepartment(
   departmentId: string
 ): Promise<DepartmentProject[]> {
-  const supabase = await getServerClient();
-
-  // 1) Base list from your RPC (id, name, description, dates)
+  const supabase = await createClient();
   const { data: base, error: rpcErr } = await supabase.rpc(
     "get_projects_for_department",
     { p_department_id: departmentId }
   );
   if (rpcErr) throw rpcErr;
-  const ids = (base ?? []).map((r: any) => r.id);
+
+  type RpcProjectRow = {
+    id: string;
+    name: string;
+    description: string | null;
+    start_date: string | null;
+    end_date: string | null;
+  };
+
+  const ids = (base ?? []).map((r: RpcProjectRow) => r.id);
   if (!ids.length) return [];
 
-  // 2) Enrich with status + client name via projects ← clients
+  type EnrichedRow = {
+    id: string;
+    status: ProjectStatus;
+    client: { name: string } | { name: string }[] | null;
+  };
+
   const { data: enriched, error: joinErr } = await supabase
     .from("projects")
-    .select("id, status, clients:client_id(name)")
-    .in("id", ids);
+    .select("id, status, client:client_id(name)")
+    .in("id", ids)
+    .overrideTypes<EnrichedRow[], { merge: false }>();
   if (joinErr) throw joinErr;
 
-  const statusById = new Map<
-    string,
-    { status: DepartmentProject["status"]; client_name: string | null }
-  >(
-    (enriched ?? []).map((r: any) => [
+  const statusById = new Map(
+    (enriched ?? []).map((r) => [
       r.id,
-      { status: r.status, client_name: r.clients?.name ?? null },
+      { status: r.status, client_name: pickOne(r.client)?.name ?? null },
     ])
   );
 
-  return (base ?? []).map((r: any) => ({
+  return (base ?? []).map((r: RpcProjectRow) => ({
     id: r.id,
     name: r.name,
     description: r.description,
@@ -238,7 +256,7 @@ export async function createProject(input: {
   end_date?: string | null;
 }) {
   await requireAdmin();
-  const supabase = await getServerClient();
+  const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("projects")
@@ -269,7 +287,7 @@ export async function updateProject(
   }>
 ) {
   await requireAdmin();
-  const supabase = await getServerClient();
+  const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("projects")
@@ -294,7 +312,7 @@ export async function addMember(
   }
 ) {
   await requireAdmin();
-  const supabase = await getServerClient();
+  const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("project_members")
@@ -316,7 +334,7 @@ export async function addMember(
 
 export async function removeMember(projectId: string, profileId: string) {
   await requireAdmin();
-  const supabase = await getServerClient();
+  const supabase = await createClient();
 
   const { error } = await supabase
     .from("project_members")
@@ -328,7 +346,7 @@ export async function removeMember(projectId: string, profileId: string) {
 }
 
 export async function getActiveProjects() {
-  const supabase = await getServerClient();
+  const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("v_project_overview")
@@ -340,14 +358,14 @@ export async function getActiveProjects() {
   return data ?? [];
 }
 
-// ---- EXTRA ACTIONS FOR DASHBOARD PROJECT PAGE ----
-
-import { randomUUID } from "crypto";
+/* -----------------------------------------------------------------------------
+   EXTRA ACTIONS FOR DASHBOARD PROJECT PAGE
+----------------------------------------------------------------------------- */
 
 // Skill management
 export async function addRequiredSkill(projectId: string, skillId: string) {
   await requireAdmin();
-  const supabase = await getServerClient();
+  const supabase = await createClient();
 
   const { error } = await supabase
     .from("project_skills")
@@ -359,7 +377,7 @@ export async function addRequiredSkill(projectId: string, skillId: string) {
 
 export async function removeRequiredSkill(projectId: string, skillId: string) {
   await requireAdmin();
-  const supabase = await getServerClient();
+  const supabase = await createClient();
 
   const { error } = await supabase
     .from("project_skills")
@@ -376,7 +394,7 @@ export async function setProjectHoursRequired(
   hours: number | null
 ) {
   await requireAdmin();
-  const supabase = await getServerClient();
+  const supabase = await createClient();
 
   const { error } = await supabase
     .from("projects")
@@ -389,7 +407,7 @@ export async function setProjectHoursRequired(
 
 // Applications (consultant expresses interest)
 export async function applyToProject(projectId: string, message?: string) {
-  const supabase = await getServerClient();
+  const supabase = await createClient();
   const {
     data: { user },
     error: authErr,
@@ -407,7 +425,7 @@ export async function applyToProject(projectId: string, message?: string) {
 }
 
 export async function withdrawApplication(projectId: string) {
-  const supabase = await getServerClient();
+  const supabase = await createClient();
   const {
     data: { user },
     error: authErr,
@@ -423,31 +441,48 @@ export async function withdrawApplication(projectId: string) {
   return { ok: true };
 }
 
-export async function listApplicants(projectId: string) {
+export async function listApplicants(projectId: string): Promise<Applicant[]> {
   await requireAdmin();
-  const supabase = await getServerClient();
+  const supabase = await createClient();
+
+  type ApplicantRow = {
+    profile_id: string;
+    message: string | null;
+    created_at: string;
+    profile:
+      | { display_name: string; title: string | null }
+      | { display_name: string; title: string | null }[]
+      | null;
+  };
 
   const { data, error } = await supabase
     .from("project_interest")
     .select(
       `
-      profile_id,
-      message,
-      created_at,
-      profiles!inner(display_name, title)
-    `
+        profile_id,
+        message,
+        created_at,
+        profile:profiles(display_name, title)
+      `
     )
     .eq("project_id", projectId)
-    .order("created_at", { ascending: false });
-
+    .order("created_at", { ascending: false })
+    .overrideTypes<ApplicantRow[], { merge: false }>(); // <-- replace .returns
   if (error) throw error;
-  return (data ?? []).map((r: any) => ({
-    profile_id: r.profile_id,
-    display_name: r.profiles.display_name,
-    title: r.profiles.title,
-    message: r.message,
-    created_at: r.created_at,
-  }));
+
+  return (data ?? [])
+    .map((r) => {
+      const prof = pickOne(r.profile);
+      if (!prof) return null;
+      return {
+        profile_id: r.profile_id,
+        display_name: prof.display_name,
+        title: prof.title,
+        message: r.message,
+        created_at: r.created_at,
+      };
+    })
+    .filter((v): v is Applicant => v !== null);
 }
 
 export async function approveApplicant({
@@ -464,10 +499,16 @@ export async function approveApplicant({
   start_date?: string | null;
 }) {
   await requireAdmin();
-  const supabase = await getServerClient();
+  const supabase = await createClient();
 
   // Build payload carefully to avoid overwriting with nulls
-  const payload: Record<string, any> = {
+  const payload: {
+    project_id: string;
+    profile_id: string;
+    role: string;
+    hours?: number | null;
+    start_date?: string | null;
+  } = {
     project_id: projectId,
     profile_id: profileId,
     role,
@@ -478,7 +519,7 @@ export async function approveApplicant({
   // Upsert on (project_id, profile_id)
   const { error: upsertErr } = await supabase
     .from("project_members")
-    .upsert(payload, { onConflict: "project_id,profile_id" }); // prevent duplicate key error
+    .upsert(payload, { onConflict: "project_id,profile_id" });
   if (upsertErr) throw upsertErr;
 
   // Remove interest if it exists
@@ -491,10 +532,10 @@ export async function approveApplicant({
 }
 
 // Storage: upload/delete/list files for projects
-const PROJECT_BUCKET = "projects"; // create this bucket in Supabase Storage (public or RLS as you prefer)
+const PROJECT_BUCKET = "projects"; // create this bucket in Supabase Storage
 
 export async function listProjectFiles(projectId: string) {
-  const supabase = await getServerClient();
+  const supabase = await createClient();
 
   const { data, error } = await supabase.storage
     .from(PROJECT_BUCKET)
@@ -505,18 +546,17 @@ export async function listProjectFiles(projectId: string) {
   const files = (data ?? []).map((f) => ({
     name: f.name,
     path: `projects/${projectId}/${f.name}`,
-    // comment the next two lines if using private bucket + signed URLs instead
     publicUrl: supabase.storage
       .from(PROJECT_BUCKET)
       .getPublicUrl(`projects/${projectId}/${f.name}`).data.publicUrl,
-    created_at: (f as any).created_at ?? null,
+    created_at: (f as { created_at?: string }).created_at ?? null,
   }));
   return files;
 }
 
 export async function uploadProjectFile(projectId: string, file: File) {
   await requireAdmin();
-  const supabase = await getServerClient();
+  const supabase = await createClient();
 
   const ext = file.name.split(".").pop();
   const key = `projects/${projectId}/${randomUUID()}.${ext ?? "bin"}`;
@@ -531,7 +571,7 @@ export async function uploadProjectFile(projectId: string, file: File) {
 
 export async function deleteProjectFile(projectId: string, path: string) {
   await requireAdmin();
-  const supabase = await getServerClient();
+  const supabase = await createClient();
 
   const { error } = await supabase.storage.from(PROJECT_BUCKET).remove([path]);
   if (error) throw error;
@@ -539,40 +579,48 @@ export async function deleteProjectFile(projectId: string, path: string) {
   return { ok: true };
 }
 
-// -------- Department-hours (per project) --------
-
-export type DepartmentHour = {
-  department_id: string;
-  department_name: string;
-  hours_required: number;
-};
+/* -----------------------------------------------------------------------------
+   Department-hours (per project)
+----------------------------------------------------------------------------- */
 
 export async function listProjectDepartmentHours(projectId: string) {
-  const supabase = await getServerClient();
+  const supabase = await createClient();
+
+  type DeptHourRow = {
+    department_id: string;
+    hours_required: number;
+    department: { name: string } | { name: string }[] | null;
+  };
+
   const { data, error } = await supabase
     .from("project_department_hours")
-    .select("department_id, hours_required, departments!inner(name)")
+    .select("department_id, hours_required, department:departments(name)")
     .eq("project_id", projectId)
-    .order("departments(name)", { ascending: true });
+    .order("department(name)", { ascending: true })
+    .overrideTypes<DeptHourRow[], { merge: false }>(); // <-- replace .returns
   if (error) throw error;
 
-  return (data ?? []).map((r: any) => ({
-    department_id: r.department_id,
-    department_name: r.departments.name,
-    hours_required: r.hours_required,
-  })) as DepartmentHour[];
+  return (data ?? [])
+    .map((r) => {
+      const dept = pickOne(r.department);
+      if (!dept) return null;
+      return {
+        department_id: r.department_id,
+        department_name: dept.name,
+        hours_required: r.hours_required,
+      };
+    })
+    .filter((v): v is DepartmentHour => v !== null);
 }
 
-/**
- * Admin: set/replace hours for a department on a project (upsert)
- */
+/** Admin: set/replace hours for a department on a project (upsert) */
 export async function setProjectDepartmentHours(
   projectId: string,
   departmentId: string,
   hours: number
 ) {
   await requireAdmin();
-  const supabase = await getServerClient();
+  const supabase = await createClient();
 
   const { error } = await supabase.from("project_department_hours").upsert(
     {
@@ -587,15 +635,13 @@ export async function setProjectDepartmentHours(
   return { ok: true };
 }
 
-/**
- * Admin: remove a department hours row from a project
- */
+/** Admin: remove a department hours row from a project */
 export async function removeProjectDepartmentHours(
   projectId: string,
   departmentId: string
 ) {
   await requireAdmin();
-  const supabase = await getServerClient();
+  const supabase = await createClient();
 
   const { error } = await supabase
     .from("project_department_hours")
@@ -606,7 +652,10 @@ export async function removeProjectDepartmentHours(
   return { ok: true };
 }
 
-// --- Member update/remove used by <MembersList> ---
+/* -----------------------------------------------------------------------------
+   Member update/remove (used by <MembersList>)
+----------------------------------------------------------------------------- */
+
 export async function updateMember(
   projectId: string,
   profileId: string,
@@ -617,8 +666,13 @@ export async function updateMember(
   }
 ) {
   await requireAdmin();
-  const supabase = await getServerClient();
-  const payload: Record<string, any> = {};
+  const supabase = await createClient();
+
+  const payload: {
+    role?: string | null;
+    hours?: number | null;
+    start_date?: string | null;
+  } = {};
   if (patch.role !== undefined) payload.role = patch.role;
   if (patch.hours !== undefined) payload.hours = patch.hours;
   if (patch.start_date !== undefined) payload.start_date = patch.start_date;
@@ -632,7 +686,10 @@ export async function updateMember(
   return { ok: true };
 }
 
-// ====== Form-action wrappers (used directly as <form action={...}>) ======
+/* -----------------------------------------------------------------------------
+   Form-action wrappers (used directly as <form action={...}>)
+----------------------------------------------------------------------------- */
+
 export async function addSkillAction(formData: FormData) {
   const pid = formData.get("project_id") as string;
   const skillId = formData.get("skill_id") as string;
@@ -697,7 +754,7 @@ export async function approveApplicantAction(formData: FormData) {
 export async function uploadFileAction(formData: FormData) {
   const pid = formData.get("project_id") as string;
   const file = formData.get("file") as File;
-  if (!file || (file as any).size === 0) throw new Error("No file selected");
+  if (!file || file.size === 0) throw new Error("No file selected");
   await uploadProjectFile(pid, file);
   revalidatePath(`/dashboard/projects/${pid}`);
 }
@@ -733,13 +790,13 @@ export async function removeMemberAction(formData: FormData) {
 ----------------------------------------------------------------------------- */
 
 async function isAdminUser(uid: string) {
-  const supabase = await getServerClient();
+  const supabase = await createClient();
   const { data } = await supabase.rpc("is_admin", { uid });
   return !!data;
 }
 
 async function isProjectOwner(projectId: string, uid: string) {
-  const supabase = await getServerClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("projects")
     .select("owner_id")
@@ -750,7 +807,7 @@ async function isProjectOwner(projectId: string, uid: string) {
 
 /** Require owner or admin for owner-scope mutations (e.g., posting updates) */
 async function requireOwnerOrAdmin(projectId: string) {
-  const supabase = await getServerClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -769,9 +826,9 @@ async function requireOwnerOrAdmin(projectId: string) {
 /** Read: get current project owner (id + display_name) */
 export async function getProjectOwner(projectId: string): Promise<{
   profile_id: string;
-  display_name: string;
+  display_name: string | null;
 } | null> {
-  const supabase = await getServerClient();
+  const supabase = await createClient();
 
   const { data: proj, error: pErr } = await supabase
     .from("projects")
@@ -792,18 +849,14 @@ export async function getProjectOwner(projectId: string): Promise<{
   return { profile_id: prof.id, display_name: prof.display_name };
 }
 
-/**
- * Form action (ADMIN ONLY): set/change owner.
- * Validates that the selected owner is currently a project member.
- * Expects: project_id, owner_profile_id (FormData)
- */
+/** Form action (ADMIN ONLY): set/change owner. */
 export async function setProjectOwner(formData: FormData) {
   const projectId = formData.get("project_id") as string;
   const ownerId = (formData.get("owner_profile_id") as string) || null;
 
   await requireAdmin(); // admin decides owner
 
-  const supabase = await getServerClient();
+  const supabase = await createClient();
 
   if (ownerId) {
     // ensure owner is a member of this project
@@ -831,37 +884,38 @@ export async function setProjectOwner(formData: FormData) {
    Project updates (status / goals / notes)
 ----------------------------------------------------------------------------- */
 
-type ProjectUpdate = {
-  id: string;
-  title: string | null;
-  body: string | null;
-  created_at: string;
-  author: { id: string; display_name: string | null } | null;
-};
-
-/** Read: list updates (newest first) with author display_name */
 export async function listProjectUpdates(
   projectId: string
 ): Promise<ProjectUpdate[]> {
-  const supabase = await getServerClient();
+  const supabase = await createClient();
+
+  type UpdateRow = {
+    id: string;
+    title: string | null;
+    body: string | null;
+    created_at: string;
+    // belongs-to join -> single object (or null), not an array
+    author: { id: string; display_name: string | null } | null;
+  };
 
   const { data, error } = await supabase
     .from("project_updates")
     .select(
       `
-      id,
-      title,
-      body,
-      created_at,
-      author:profiles!project_updates_author_id_fkey(id, display_name)
-    `
+        id,
+        title,
+        body,
+        created_at,
+        author:profiles!project_updates_author_id_fkey(id, display_name)
+      `
     )
     .eq("project_id", projectId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .returns<UpdateRow[]>(); // <- ensure correct type
 
   if (error) throw error;
 
-  return (data ?? []).map((u: any) => ({
+  return (data ?? []).map((u) => ({
     id: u.id,
     title: u.title,
     body: u.body,
@@ -872,10 +926,7 @@ export async function listProjectUpdates(
   }));
 }
 
-/**
- * Form action: create an update (Owner OR Admin).
- * Expects: project_id, title, body
- */
+/** Create an update (Owner OR Admin). */
 export async function createProjectUpdate(formData: FormData) {
   const projectId = formData.get("project_id") as string;
   const title = ((formData.get("title") as string) || "").trim() || null;
@@ -883,7 +934,7 @@ export async function createProjectUpdate(formData: FormData) {
 
   await requireOwnerOrAdmin(projectId);
 
-  const supabase = await getServerClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -900,17 +951,14 @@ export async function createProjectUpdate(formData: FormData) {
   revalidatePath(`/dashboard/projects/${projectId}`);
 }
 
-/**
- * Form action: delete an update (Owner OR Admin).
- * Expects: project_id, update_id
- */
+/** Delete an update (Owner OR Admin). */
 export async function deleteProjectUpdate(formData: FormData) {
   const projectId = formData.get("project_id") as string;
   const updateId = formData.get("update_id") as string;
 
   await requireOwnerOrAdmin(projectId);
 
-  const supabase = await getServerClient();
+  const supabase = await createClient();
   const { error } = await supabase
     .from("project_updates")
     .delete()

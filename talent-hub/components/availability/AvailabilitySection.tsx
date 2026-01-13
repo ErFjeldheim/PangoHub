@@ -1,9 +1,8 @@
 import {
   getAvailabilityNextSixMonths,
-  upsertAvailabilityMonthAction,
-  upsertAvailabilityNotesAction,
-  type AvailabilityRow,
+  upsertAvailabilityMonthAndNotesAction,
 } from "@/app/actions/availability";
+import type { AvailabilityRow } from "@/types/availability";
 import { AvailabilityManagerClient } from "./AvailabilityManagerClient";
 
 export async function AvailabilitySection({
@@ -20,8 +19,7 @@ export async function AvailabilitySection({
     <AvailabilityManagerClient
       profileId={profileId}
       initial={initialRows}
-      saveHoursAction={upsertAvailabilityMonthAction}
-      saveNotesAction={upsertAvailabilityNotesAction}
+      saveMonthAction={upsertAvailabilityMonthAndNotesAction}
     />
   );
 }

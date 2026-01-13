@@ -12,6 +12,7 @@ type Member = {
   hours: number | null;
   start_date: string | null;
   end_date: string | null;
+  contribution: string | null;
 };
 
 export function MembersList({

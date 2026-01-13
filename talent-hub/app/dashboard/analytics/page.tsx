@@ -1,17 +1,7 @@
-import { requireAdmin } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { BarChart3, Users, TrendingUp, Clock } from "lucide-react";
+import { requireAdmin } from "@/lib/auth/server-auth";
 
 export default async function AnalyticsPage() {
   await requireAdmin();
-  const supabase = await createClient();
 
   return (
     <div className="space-y-6">

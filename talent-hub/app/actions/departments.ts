@@ -2,10 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-
-import { getConsultantsForDepartment } from "@/app/actions/consultants";
-import type { Department } from "@/types/department";
-import type { Consultant } from "@/types/consultant";
+import { DepartmentDetails } from "@/types/department";
 
 export async function getDepartments() {
   const supabase = await createClient();
@@ -142,14 +139,18 @@ export async function getDepartmentsOverview(): Promise<DepartmentOverview[]> {
   );
 }
 
-export type DepartmentDetails = {
-  id: string;
-  name: string;
-  description: string | null;
-  consultant_count: number;
-  leader_name: string | null;
-  leader_profile_id?: string | null; // Optional if you want the raw id too
-};
+// app/actions/departments.ts
+export async function getAllDepartmentsBasic(): Promise<
+  Array<{ id: string; name: string }>
+> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("departments")
+    .select("id, name")
+    .order("name", { ascending: true });
+  if (error) throw error;
+  return data ?? [];
+}
 
 export async function getDepartmentDetails(
   id: string
@@ -161,7 +162,7 @@ export async function getDepartmentDetails(
     console.error("Error fetching department details:", error);
     return null;
   }
-  const row = (data ?? []).find((d: any) => d.id === id);
+  const row = (data ?? []).find((d: DepartmentDetails) => d.id === id);
   if (!row) return null;
 
   // If you also want the raw leader_profile_id in UI, fetch it directly:

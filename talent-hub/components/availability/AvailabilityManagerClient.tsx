@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useOptimistic, useState } from "react";
+import { useMemo, useOptimistic, useState, startTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
   Calendar,
@@ -16,10 +17,7 @@ import {
   Save,
   TrendingUp,
 } from "lucide-react";
-import type {
-  AvailabilityRow,
-  AvailabilityStatus,
-} from "@/app/actions/availability";
+import type { AvailabilityRow, AvailabilityStatus } from "@/types/availability";
 import { useFormStatus } from "react-dom";
 
 function getStatusColor(status: AvailabilityStatus) {
@@ -63,7 +61,7 @@ function formatStatus(status: AvailabilityStatus) {
   }
 }
 
-function SavingButton() {
+function SavingButton({ label = "Save" }: { label?: string }) {
   const { pending } = useFormStatus();
   return (
     <Button
@@ -79,7 +77,7 @@ function SavingButton() {
       ) : (
         <>
           <Save className="w-4 h-4 mr-2" />
-          Save
+          {label}
         </>
       )}
     </Button>
@@ -89,13 +87,11 @@ function SavingButton() {
 export function AvailabilityManagerClient({
   profileId,
   initial,
-  saveHoursAction,
-  saveNotesAction,
+  saveMonthAction,
 }: {
   profileId: string;
   initial: AvailabilityRow[];
-  saveHoursAction: (fd: FormData) => Promise<void>;
-  saveNotesAction: (fd: FormData) => Promise<void>;
+  saveMonthAction: (fd: FormData) => Promise<AvailabilityRow>;
 }) {
   // optimistic local editing of hours_available
   const [optimisticRows, updateOptimistic] = useOptimistic(
@@ -113,6 +109,11 @@ export function AvailabilityManagerClient({
 
   const [localHours, setLocalHours] = useState<Record<string, number>>(
     Object.fromEntries(initial.map((r) => [r.month, r.hours_available ?? 0]))
+  );
+
+  // local notes state (no optimistic recompute needed)
+  const [localNotes, setLocalNotes] = useState<Record<string, string>>(
+    Object.fromEntries(initial.map((r) => [r.month, r.notes ?? ""]))
   );
 
   const totals = useMemo(() => {
@@ -134,7 +135,9 @@ export function AvailabilityManagerClient({
   const onChangeHours = (month: string, v: string) => {
     const num = Math.max(0, Math.min(Number(v || 0), 744));
     setLocalHours((prev) => ({ ...prev, [month]: num }));
-    updateOptimistic({ month, hours_available: num });
+    startTransition(() => {
+      updateOptimistic({ month, hours_available: num });
+    });
   };
 
   return (
@@ -149,7 +152,7 @@ export function AvailabilityManagerClient({
               Monthly Availability Manager
             </CardTitle>
             <p className="text-muted-foreground mt-1">
-              Set your work hours for the upcoming months
+              Set your work hours and optional notes per month
             </p>
           </div>
         </div>
@@ -211,14 +214,19 @@ export function AvailabilityManagerClient({
                   100
                 : 0;
 
+            // ensure we always submit a string value (e.g. "0")
+            const hoursToSave = Number.isFinite(localHours[entry.month])
+              ? String(Number(localHours[entry.month]))
+              : String(entry.hours_available ?? 0);
+
             return (
               <Card
                 key={entry.month}
                 className="border-2 hover:border-accent/30 transition-all duration-200 hover:shadow-md"
               >
-                <CardContent className="p-6">
+                <CardContent className="p-6 space-y-5">
                   <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                    {/* Month Info */}
+                    {/* Month info (left) */}
                     <div className="flex-1 space-y-3">
                       <div className="flex items-center gap-3">
                         <Label className="text-lg font-semibold">
@@ -240,7 +248,8 @@ export function AvailabilityManagerClient({
                           <p className="text-muted-foreground">Available</p>
                           <p className="font-semibold">
                             {localHours[entry.month] ??
-                              (entry.hours_available || 0)}
+                              entry.hours_available ??
+                              0}
                             h
                           </p>
                         </div>
@@ -264,7 +273,6 @@ export function AvailabilityManagerClient({
                         </div>
                       </div>
 
-                      {/* Progress Bar */}
                       {(localHours[entry.month] ?? entry.hours_available) >
                         0 && (
                         <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
@@ -276,7 +284,7 @@ export function AvailabilityManagerClient({
                       )}
                     </div>
 
-                    {/* Input and Save */}
+                    {/* Inputs (right) */}
                     <div className="flex items-end gap-4">
                       <div className="space-y-2">
                         <Label
@@ -303,39 +311,53 @@ export function AvailabilityManagerClient({
                           onFocus={(e) => e.target.select()}
                         />
                       </div>
-
-                      {/* Server Action form */}
-                      <form
-                        action={async (fd) => {
-                          try {
-                            await saveHoursAction(fd);
-                            toast.success(
-                              `Availability for ${pretty} saved successfully`
-                            );
-                          } catch (e: any) {
-                            toast.error("Failed to save availability");
-                          }
-                        }}
-                      >
-                        <input
-                          type="hidden"
-                          name="profile_id"
-                          value={profileId}
-                        />
-                        <input type="hidden" name="month" value={entry.month} />
-                        <input
-                          type="hidden"
-                          name="hours_available"
-                          value={String(
-                            localHours[entry.month] ??
-                              entry.hours_available ??
-                              0
-                          )}
-                        />
-                        <SavingButton />
-                      </form>
                     </div>
                   </div>
+
+                  {/* Notes + single form submit */}
+                  <form
+                    action={async (fd) => {
+                      try {
+                        await saveMonthAction(fd); // <-- see prop rename below
+                        toast.success(`Saved ${pretty}`);
+                      } catch (error: unknown) {
+                        const message =
+                          error instanceof Error
+                            ? error.message
+                            : String(error ?? "Unknown error");
+                        toast.error("Failed to save: " + message);
+                      }
+                    }}
+                    className="grid gap-3"
+                  >
+                    <Label htmlFor={`notes-${entry.month}`}>Notes</Label>
+                    <Textarea
+                      id={`notes-${entry.month}`}
+                      placeholder="Optional: context, planned vacations, assignments, etc."
+                      value={localNotes[entry.month] ?? ""}
+                      onChange={(e) =>
+                        setLocalNotes((prev) => ({
+                          ...prev,
+                          [entry.month]: e.target.value,
+                        }))
+                      }
+                      rows={3}
+                      name="notes" // important: form field
+                    />
+
+                    {/* hidden fields */}
+                    <input type="hidden" name="profile_id" value={profileId} />
+                    <input type="hidden" name="month" value={entry.month} />
+                    <input
+                      type="hidden"
+                      name="hours_available"
+                      value={hoursToSave}
+                    />
+
+                    <div className="flex justify-end">
+                      <SavingButton label="Save month" />
+                    </div>
+                  </form>
                 </CardContent>
               </Card>
             );

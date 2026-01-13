@@ -148,13 +148,13 @@ export function SkillsManager({ profileId }: SkillsManagerProps) {
         setProfileSkills((prev) => [...prev, added]);
       }
       setNewSkill("");
-    } catch (e: any) {
+    } catch (error: unknown) {
       const message =
-        typeof e?.message === "string" && e.message.includes("duplicate")
+        error instanceof Error && error.message.includes("duplicate")
           ? "Skill already exists."
           : "Could not create skill.";
       setInputError(message);
-      console.error(e);
+      console.error(error);
     } finally {
       setCreating(false);
     }
@@ -277,7 +277,7 @@ export function SkillsManager({ profileId }: SkillsManagerProps) {
                       <Plus className="h-4 w-4 text-muted-foreground" />
                       <span>
                         Create{" "}
-                        <span className="font-medium">"{newSkill.trim()}"</span>{" "}
+                        <span className="font-medium">{newSkill.trim()}</span>{" "}
                         and add to your skills
                       </span>
                     </div>

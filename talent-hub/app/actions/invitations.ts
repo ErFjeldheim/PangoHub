@@ -1,10 +1,13 @@
+// app/actions/invitations.ts
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { cookies } from "next/headers";
 import { createHash } from "crypto";
+import type { PostgrestError } from "@/types/supabase";
 
-// app/actions/invitations.ts
+/**
+ * Admin-only: create an invitation and return the signup URL.
+ */
 export async function createInvitation(
   email: string,
   role: "consultant" | "admin"
@@ -31,24 +34,24 @@ export async function createInvitation(
   });
 
   if (error) {
-    if ((error as any).code === "23505") {
+    if ((error as PostgrestError).code === "23505") {
       throw new Error("That email already has a pending invitation.");
     }
     console.error("Error creating invitation:", error);
     throw new Error("Failed to create invitation");
   }
 
-  // ✅ include email param (what your SignUpPage expects)
   const inviteUrl =
     `${process.env.NEXT_PUBLIC_BASE_URL}` +
     `/auth/signup?token=${encodeURIComponent(token)}` +
     `&email=${encodeURIComponent(cleanEmail)}`;
 
-  console.log("invite url", inviteUrl);
-
   return { inviteUrl };
 }
 
+/**
+ * List pending (unaccepted) invitations.
+ */
 export async function getInvitations() {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -76,12 +79,91 @@ export async function getInvitations() {
   return data;
 }
 
+/**
+ * Delete an invitation by id.
+ */
 export async function deleteInvitation(id: string) {
   const supabase = await createClient();
   const { error } = await supabase.from("invitations").delete().eq("id", id);
-
   if (error) {
     console.error("Error deleting invitation:", error);
     throw new Error("Failed to delete invitation");
   }
+}
+
+/**
+ * Verify an invitation (token + email).
+ * Uses SECURITY DEFINER RPC `verify_invitation` on the DB.
+ */
+export async function verifyInvitation(token: string, email: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("verify_invitation", {
+    p_email: email,
+    p_token: token,
+  });
+
+  if (error || !data) {
+    return { error: { message: "Invalid or expired invitation" } };
+  }
+  return { invitation: data };
+}
+
+/**
+ * Sign up WITH invitation: verifies invite, signs up user, then accepts invite.
+ * Accept also auto-adds admin membership if the invite role was "admin"
+ * via SECURITY DEFINER RPC `accept_invitation`.
+ */
+export async function signUpWithInvitation(formData: FormData) {
+  const supabase = await createClient();
+
+  const token = formData.get("token") as string;
+  const email = formData.get("email") as string;
+  const password = formData.get("password") as string;
+  const firstName = formData.get("firstName") as string;
+  const lastName = formData.get("lastName") as string;
+
+  if (!token) return { error: { message: "Invalid invitation token" } };
+
+  // 1) Verify invite
+  const { data: invitation, error: verificationError } = await supabase.rpc(
+    "verify_invitation",
+    { p_email: email, p_token: token }
+  );
+  if (verificationError || !invitation) {
+    return { error: { message: "Invalid or expired invitation" } };
+  }
+
+  // 2) Sign up (profile row created by trigger)
+  const {
+    data: { user },
+    error: signUpError,
+  } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_BASE_URL}/dashboard`,
+      data: { first_name: firstName, last_name: lastName },
+    },
+  });
+  if (signUpError) return { error: signUpError };
+
+  // 3) Accept invitation (and add to admin_members if role=admin)
+  if (user?.id) {
+    const { error: acceptErr } = await supabase.rpc("accept_invitation", {
+      p_email: email,
+      p_token: token,
+      p_user_id: user.id,
+    });
+    if (acceptErr) {
+      console.error("accept_invitation error:", acceptErr);
+      return {
+        error: {
+          message:
+            "Account created, but invite acceptance failed. Contact an admin.",
+        },
+      };
+    }
+  }
+
+  return { user };
 }

@@ -1,8 +1,15 @@
+// components/consultants/ConsultantSkills.tsx
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Sparkles } from "lucide-react";
 
-export function ConsultantSkills({ skills }: { skills: any[] }) {
+type DisplaySkill = {
+  skills: { name: string }; // joined skill name
+  proficiency?: number | null; // optional numeric
+  years?: number | null; // optional numeric
+};
+
+export function ConsultantSkills({ skills }: { skills: DisplaySkill[] }) {
   return (
     <Card className="border-border/40 shadow-sm hover:shadow-md transition-shadow">
       <CardHeader className="pb-4">
@@ -10,12 +17,12 @@ export function ConsultantSkills({ skills }: { skills: any[] }) {
           <div className="p-2 rounded-lg bg-primary/10">
             <Sparkles className="h-4 w-4 text-primary" />
           </div>
-          <CardTitle className="text-xl">Skills & Expertise</CardTitle>
+          <CardTitle className="text-xl">Skills &amp; Expertise</CardTitle>
         </div>
       </CardHeader>
       <CardContent>
         <div className="flex flex-wrap gap-2">
-          {skills.map((skill: any, index) => {
+          {skills.map((skill, index) => {
             const proficiency =
               typeof skill.proficiency === "number" ? skill.proficiency : null;
             const years = typeof skill.years === "number" ? skill.years : null;

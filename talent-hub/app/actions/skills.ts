@@ -37,7 +37,7 @@ export async function getProfileSkills(
 
   if (error) throw new Error(error.message);
 
-  return (data ?? []).map((ps: any) => ({
+  return (data ?? []).map((ps: { skill_id: string; proficiency: number; skills: { name: string } | { name: string }[] | null; }) => ({
     skill_id: ps.skill_id as string,
     proficiency: ps.proficiency as number,
     name: (Array.isArray(ps.skills)
