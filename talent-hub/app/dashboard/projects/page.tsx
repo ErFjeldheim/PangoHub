@@ -25,15 +25,16 @@ type SearchParams = {
 export default async function ProjectsPage({
   searchParams,
 }: {
-  searchParams?: SearchParams;
+  searchParams: Promise<SearchParams>;
 }) {
+  const params = await searchParams;
   const pb = await createServerClient();
 
   // Fetch admin flag
   const isAdmin = await checkIsAdmin();
 
   // Fetch departments for dropdown
-  let departments: any[] = [];
+  let departments: { id: string; name: string; consultant_count: number }[] = [];
   try {
       const records = await pb.collection("departments").getFullList<Department>({ sort: 'name', expand: 'leader' });
       const assignments = await pb.collection("profile_departments").getFullList();
@@ -41,21 +42,18 @@ export default async function ProjectsPage({
       assignments.forEach(a => countMap.set(a.department, (countMap.get(a.department) || 0) + 1));
 
       departments = records.map(d => {
-          const leader = d.expand?.leader as User;
           return {
               id: d.id,
               name: d.name,
               consultant_count: countMap.get(d.id) || 0,
-              description: d.description,
-              leader_name: leader ? (leader.display_name || `${leader.first_name} ${leader.last_name}`) : null
-          }
+          };
       });
   } catch (e) {
       console.error("Error fetching departments", e);
   }
 
   // Fetch clients for the create form dropdown
-  let clients: any[] = [];
+  let clients: Client[] = [];
   try {
       clients = await pb.collection("clients").getFullList<Client>({ sort: 'name' });
   } catch (e) {
@@ -64,9 +62,9 @@ export default async function ProjectsPage({
 
   // Fetch filtered projects
   const projects = await listProjects({
-    search: searchParams?.q,
-    status: searchParams?.status ?? "all",
-    department: searchParams?.dep,
+    search: params?.q,
+    status: params?.status ?? "all",
+    department: params?.dep,
   });
 
   // Server action for the form submit
@@ -131,7 +129,7 @@ export default async function ProjectsPage({
         )}
 
         {/* Filters */}
-        <ProjectFilters searchParams={searchParams} departments={departments} />
+        <ProjectFilters searchParams={params} departments={departments} />
 
         {/* Projects Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
