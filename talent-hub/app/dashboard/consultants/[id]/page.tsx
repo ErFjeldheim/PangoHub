@@ -10,13 +10,13 @@ import { getConsultantCurrentAvailability } from "@/app/actions/availability";
 import { ConsultantDetailPageContent } from "./ConsultantDetailPageContent";
 
 interface ConsultantDetailPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export default async function ConsultantDetailPage({
   params,
 }: ConsultantDetailPageProps) {
-  const { id } = params;
+  const { id } = await params;
   const [consultant, skills, experiences, educations, currentAvailability] =
     await Promise.all([
       getConsultant(id),

@@ -70,9 +70,9 @@ const statusColors: Record<ProjectStatus, string> = {
 export default async function DashboardProjectPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const projectId = params.id;
+  const { id: projectId } = await params;
 
   // Auth / role
   const [user, adminFlag] = await Promise.all([getCurrentUser(), isAdmin()]);

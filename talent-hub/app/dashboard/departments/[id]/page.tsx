@@ -11,7 +11,7 @@ import DepartmentProjectList from "@/components/DepartmentProjectList";
 import DepartmentSettings from "@/components/DepartmentSettings";
 import DepartmentAvailabilityTrend from "@/components/DepartmentAvailabilityTrend";
 
-type PageProps = { params: { id: string } };
+type PageProps = { params: Promise<{ id: string }> };
 
 export default async function DepartmentDetailPage({ params }: PageProps) {
   const { id } = await params;
