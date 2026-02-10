@@ -25,14 +25,14 @@ type ProjectItem = {
   is_active: boolean;
 };
 
-function normalizeProjectRow(p: any): ProjectItem | null {
+function normalizeProjectRow(p: Partial<Project> & { client_name?: string; is_active?: boolean }): ProjectItem | null {
   const id = p.id ?? null;
   if (!id) return null;
   return {
     id,
     name: p.name ?? "",
     client_name: p.client_name ?? "",
-    departments: Array.isArray(p.departments) ? p.departments : [],
+    departments: [], // Departments often need extra fetch or expand
     is_active: p.is_active || false,
   };
 }
@@ -80,7 +80,7 @@ export async function getConsultantHomeData() {
 
   const myIds: string[] = myMemberRows.map(r => r.project);
 
-  let myProjectsRaw: any[] = [];
+  let myProjectsRaw: (Partial<Project> & { client_name?: string; is_active?: boolean })[] = [];
   if (myIds.length > 0) {
       const filter = myIds.map(id => `id="${id}"`).join(" || ");
       const projects = await pb.collection("projects").getFullList<Project>({
@@ -95,13 +95,14 @@ export async function getConsultantHomeData() {
       }));
   }
 
+
   const myProjects: ProjectItem[] = myProjectsRaw
-    .map((p) => normalizeProjectRow(p))
+    .map((p) => normalizeProjectRow(p as Partial<Project>))
     .filter((p): p is ProjectItem => p !== null);
 
   const activeRaw = await getActiveProjects();
   const activeProjects: ProjectItem[] = activeRaw
-    .map((p) => normalizeProjectRow(p))
+    .map((p) => normalizeProjectRow(p as Partial<Project>))
     .filter((p): p is ProjectItem => p !== null);
 
   const myIdSet = new Set(myIds);

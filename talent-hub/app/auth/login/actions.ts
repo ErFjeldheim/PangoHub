@@ -46,7 +46,8 @@ export async function login(
             httpOnly: false
         });
     }
-  } catch (e: any) {
+  } catch (err) {
+    const e = err as Error;
     console.error("Auth signIn error:", expandError(e));
     return {
       error: e.message || "Failed to authenticate."

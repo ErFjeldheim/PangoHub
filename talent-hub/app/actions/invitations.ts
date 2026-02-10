@@ -27,7 +27,8 @@ export async function createInvitation(
           token_hash: tokenHash,
           expires_at: expiresAt.toISOString()
       });
-  } catch (e: any) {
+  } catch (err) {
+      const e = err as Error;
       if (e.message?.includes("unique")) {
           throw new Error("That email already has a pending invitation.");
       }
@@ -53,6 +54,7 @@ export async function getInvitations() {
       });
       return records.map(r => ({
           ...r,
+          role: (r.role as "admin" | "consultant") || "consultant",
           created_at: r.created,
           invited_by: r.expand?.invited_by ? {
               first_name: (r.expand.invited_by as User).first_name,
@@ -117,7 +119,8 @@ export async function signUpWithInvitation(formData: FormData) {
           emailVisibility: true,
           verified: true
       });
-  } catch (e: any) {
+  } catch (err) {
+      const e = err as Error;
       return { error: { message: e.message || "Signup failed" } };
   }
 
@@ -125,7 +128,8 @@ export async function signUpWithInvitation(formData: FormData) {
       await pb.collection("invitations").update(invitation.id, {
           accepted_at: new Date().toISOString()
       });
-  } catch (e) {
+  } catch (err) {
+      const e = err as Error;
       console.error("accept invitation error:", e);
       return { error: { message: "Account created, but invite acceptance failed." } };
   }

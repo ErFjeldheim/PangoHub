@@ -1,15 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { useEffect, useRef, useState } from "react";
 import type { Consultant, AvailabilityStatus } from "@/types/consultant";
-import { Search, Loader2, User } from "lucide-react";
+import { Search, Loader2, User as UserIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
+import { searchConsultants } from "@/app/actions/consultants";
 
 export default function ConsultantSearch() {
-  const supabase = useMemo(() => createClientComponentClient(), []);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Consultant[]>([]);
   const [loading, setLoading] = useState(false);
@@ -27,7 +26,6 @@ export default function ConsultantSearch() {
   }, []);
 
   useEffect(() => {
-    const controller = new AbortController();
     const timeout = setTimeout(async () => {
       const q = query.trim();
       if (!q) {
@@ -37,29 +35,23 @@ export default function ConsultantSearch() {
       }
 
       setLoading(true);
-      const { data, error } = await supabase
-        .rpc("search_consultants", { q, p_limit: 12, p_offset: 0 })
-        .abortSignal(controller.signal);
-
-      if (!controller.signal.aborted) {
-        if (error) {
+      try {
+          const data = await searchConsultants(q);
+          setResults(data);
+          setOpen(true);
+      } catch (error) {
           console.error(error);
           setResults([]);
           setOpen(false);
-        } else {
-          console.log(data);
-          setResults((data as Consultant[]) ?? []);
-          setOpen(true);
-        }
-        setLoading(false);
+      } finally {
+          setLoading(false);
       }
     }, 250);
 
     return () => {
-      controller.abort();
       clearTimeout(timeout);
     };
-  }, [query, supabase]);
+  }, [query]);
 
   const getAvailabilityConfig = (
     status: AvailabilityStatus | null | undefined
@@ -141,7 +133,7 @@ export default function ConsultantSearch() {
                         <div className="flex items-start gap-3">
                           {/* Simple icon instead of avatar */}
                           <div className="shrink-0 inline-flex items-center justify-center h-10 w-10 rounded-full bg-muted">
-                            <User className="h-5 w-5 text-muted-foreground" />
+                            <UserIcon className="h-5 w-5 text-muted-foreground" />
                           </div>
 
                           <div className="flex-1 min-w-0">
@@ -181,7 +173,7 @@ export default function ConsultantSearch() {
           {!loading && results.length === 0 && query && (
             <div className="px-4 py-8 text-center">
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-muted/50 mb-3">
-                <User className="h-6 w-6 text-muted-foreground" />
+                <UserIcon className="h-6 w-6 text-muted-foreground" />
               </div>
               <p className="text-sm font-medium text-foreground mb-1">
                 No consultants found

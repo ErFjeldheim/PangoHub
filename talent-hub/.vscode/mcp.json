@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "pocketbase": {
+      "command": "node",
+      "args": ["/home/erik/Documents/pocketbase-mcp/build/index.js"],
+      "env": {
+        "POCKETBASE_URL": "https://db.pangohub.fjelldata.com",
+        "POCKETBASE_ADMIN_EMAIL": "erik@fjelldata.com",
+        "POCKETBASE_ADMIN_PASSWORD": "hw^upTW&NM5B2G"
+      },
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}

@@ -8,11 +8,11 @@ import type {
   ProjectOverview,
   ProjectDetail,
   DepartmentProject,
-  DepartmentHour,
   ProjectUpdate as AppProjectUpdate,
   Applicant,
 } from "@/types/project";
-import type { Project, Client, ProjectSkill, ProjectMember, User, ProjectUpdate, ProjectDepartmentHour, ProjectInterest } from "@/types/pocketbase";
+
+import { Project, Client, ProjectSkill, ProjectMember, User, ProjectUpdate, ProjectDepartmentHour, ProjectInterest, Department } from "@/types/pocketbase";
 
 export async function isProjectMember(
   projectId: string,
@@ -46,7 +46,7 @@ export async function listProjects(params?: {
   search?: string;
 }) {
   const pb = await createServerClient();
-  let filterParts: string[] = [];
+  const filterParts: string[] = [];
 
   if (params?.status && params.status !== "all") {
       filterParts.push(`status="${params.status}"`);
@@ -195,8 +195,8 @@ export async function createProject(input: {
           end_date: input.end_date
       });
       return record;
-  } catch (e: any) {
-      throw e;
+  } catch (err) {
+      throw err;
   }
 }
 
@@ -224,8 +224,8 @@ export async function updateProject(
           end_date: patch.end_date
       });
       return record;
-  } catch (e: any) {
-      throw e;
+  } catch (err) {
+      throw err;
   }
 }
 
@@ -254,8 +254,8 @@ export async function addMember(
           contribution: member.contribution
       });
       return record;
-  } catch (e: any) {
-      throw e;
+  } catch (err) {
+      throw err;
   }
 }
 
@@ -267,8 +267,8 @@ export async function removeMember(projectId: string, profileId: string) {
       const record = await pb.collection("project_members").getFirstListItem(`project="${projectId}" && user="${profileId}"`);
       await pb.collection("project_members").delete(record.id);
       return { ok: true };
-  } catch (e: any) {
-      throw e;
+  } catch (err) {
+      throw err;
   }
 }
 
@@ -468,11 +468,11 @@ export async function listProjectDepartmentHours(projectId: string) {
       filter: `project="${projectId}"`,
       expand: 'department',
       sort: 'department.name'
-  }); // Note: sort by expanded field might not work in some PB versions directly, but trying.
+  });
 
   return records.map(r => ({
       department_id: r.department,
-      department_name: (r.expand?.department as any)?.name || "",
+      department_name: (r.expand?.department as Department)?.name || "",
       hours_required: r.hours_required
   }));
 }

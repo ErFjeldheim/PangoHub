@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/pocketbase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -25,26 +25,17 @@ import {
   Save,
   XCircle,
 } from "lucide-react";
+import { Experience } from "@/types/pocketbase";
 
-interface Experience {
-  id?: string;
-  org: string;
-  role: string;
-  start_date: string;
-  end_date?: string;
-  type: "job" | "contract" | "volunteer" | "education" | "other";
-  description?: string;
-}
-
-interface ExperienceManagerProps {
+interface ExperienceProps {
   profileId: string;
 }
 
-export function ExperienceManager({ profileId }: ExperienceManagerProps) {
-  const supabase = createClient();
+export function ExperienceManager({ profileId }: ExperienceProps) {
+  const pb = createClient();
   const [experiences, setExperiences] = useState<Experience[]>([]);
   const [isEditing, setIsEditing] = useState(false);
-  const [currentExperience, setCurrentExperience] = useState<Experience | null>(
+  const [currentExperience, setCurrentExperience] = useState<Partial<Experience> | null>(
     null
   );
   const [isLoading, setIsLoading] = useState(true);
@@ -52,23 +43,23 @@ export function ExperienceManager({ profileId }: ExperienceManagerProps) {
   useEffect(() => {
     async function fetchExperiences() {
       setIsLoading(true);
-      const { data, error } = await supabase
-        .from("experiences")
-        .select("*")
-        .eq("profile_id", profileId)
-        .order("start_date", { ascending: false });
-
-      if (error) {
+      try {
+          const records = await pb.collection("experiences").getFullList<Experience>({
+              filter: `user="${profileId}"`,
+              sort: '-start_date'
+          });
+          setExperiences(records);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } catch (error: any) {
+        if (error.isAbort) return;
         console.error("Error fetching experiences:", error);
         toast.error("Failed to fetch experiences");
-      } else {
-        setExperiences(data);
       }
       setIsLoading(false);
     }
 
     fetchExperiences();
-  }, [profileId, supabase]);
+  }, [profileId, pb]);
 
   const handleAddNew = () => {
     setCurrentExperience({
@@ -86,46 +77,39 @@ export function ExperienceManager({ profileId }: ExperienceManagerProps) {
   };
 
   const handleDelete = async (experienceId: string) => {
-    const { error } = await supabase
-      .from("experiences")
-      .delete()
-      .eq("id", experienceId);
-    if (error) {
-      toast.error("Failed to delete experience");
-    } else {
-      setExperiences(experiences.filter((exp) => exp.id !== experienceId));
-      toast.success("Experience deleted");
+    try {
+        await pb.collection("experiences").delete(experienceId);
+        setExperiences(experiences.filter((exp) => exp.id !== experienceId));
+        toast.success("Experience deleted");
+    } catch (error) {
+        toast.error("Failed to delete experience");
     }
   };
 
   const handleSave = async () => {
     if (!currentExperience) return;
 
-    const experienceToSave = {
-      ...currentExperience,
-      profile_id: profileId,
-    };
+    try {
+        let record: Experience;
+        const payload = {
+            ...currentExperience,
+            user: profileId
+        };
 
-    const { data, error } = await supabase
-      .from("experiences")
-      .upsert(experienceToSave)
-      .select()
-      .single();
+        if (currentExperience.id) {
+            record = await pb.collection("experiences").update(currentExperience.id, payload);
+            setExperiences(experiences.map((exp) => (exp.id === record.id ? record : exp)));
+        } else {
+            record = await pb.collection("experiences").create(payload);
+            setExperiences([record, ...experiences]);
+        }
 
-    if (error) {
+        toast.success("Experience saved");
+        setIsEditing(false);
+        setCurrentExperience(null);
+    } catch (error) {
       toast.error("Failed to save experience");
       console.error("Error saving experience:", error);
-    } else {
-      if (currentExperience.id) {
-        setExperiences(
-          experiences.map((exp) => (exp.id === data.id ? data : exp))
-        );
-      } else {
-        setExperiences([data, ...experiences]);
-      }
-      toast.success("Experience saved");
-      setIsEditing(false);
-      setCurrentExperience(null);
     }
   };
 
@@ -220,11 +204,11 @@ export function ExperienceManager({ profileId }: ExperienceManagerProps) {
               <Input
                 className="h-11"
                 type="date"
-                value={currentExperience.start_date}
+                value={currentExperience.start_date ? new Date(currentExperience.start_date).toISOString().split('T')[0] : ''}
                 onChange={(e) =>
                   setCurrentExperience({
                     ...currentExperience,
-                    start_date: e.target.value,
+                    start_date: new Date(e.target.value).toISOString(),
                   })
                 }
               />
@@ -237,11 +221,11 @@ export function ExperienceManager({ profileId }: ExperienceManagerProps) {
               <Input
                 className="h-11"
                 type="date"
-                value={currentExperience.end_date || ""}
+                value={currentExperience.end_date ? new Date(currentExperience.end_date).toISOString().split('T')[0] : ''}
                 onChange={(e) =>
                   setCurrentExperience({
                     ...currentExperience,
-                    end_date: e.target.value,
+                    end_date: e.target.value ? new Date(e.target.value).toISOString() : "",
                   })
                 }
               />
@@ -361,10 +345,10 @@ export function ExperienceManager({ profileId }: ExperienceManagerProps) {
                   </div>
                   <span
                     className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${getTypeBadgeColor(
-                      exp.type
+                      exp.type || 'other'
                     )}`}
                   >
-                    {exp.type.charAt(0).toUpperCase() + exp.type.slice(1)}
+                    {exp.type ? exp.type.charAt(0).toUpperCase() + exp.type.slice(1) : 'Other'}
                   </span>
                 </div>
 
@@ -387,7 +371,7 @@ export function ExperienceManager({ profileId }: ExperienceManagerProps) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => handleDelete(exp.id!)}
+                  onClick={() => handleDelete(exp.id)}
                   className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                 >
                   <Trash2 className="h-4 w-4" />

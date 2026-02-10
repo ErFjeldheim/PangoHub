@@ -34,7 +34,8 @@ export async function updateMyProfileAction(formData: FormData) {
   const pb = await createServerClient();
   try {
       await pb.collection("users").update(uid, patch);
-  } catch (e: any) {
+  } catch (err) {
+      const e = err as Error;
       throw new Error(e.message);
   }
 

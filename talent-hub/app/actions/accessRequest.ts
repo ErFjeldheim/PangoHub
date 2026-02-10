@@ -47,7 +47,8 @@ export async function createAccessRequest(input: {
           message,
           status: 'pending'
       });
-  } catch (e: any) {
+  } catch (err) {
+      const e = err as Error;
       console.error("access_requests insert error:", e);
       throw new Error("Could not submit your request. Please try again.");
   }

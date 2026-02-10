@@ -70,7 +70,7 @@ export async function getConsultant(consultantId: string): Promise<Consultant> {
   }
 }
 
-export async function getConsultantsForDepartment(departmentId: string) {
+export async function getConsultantsForDepartment(departmentId: string): Promise<Consultant[]> {
   const pb = await createServerClient();
   try {
       const assignments = await pb.collection("profile_departments").getFullList<ProfileDepartment>({
@@ -81,14 +81,8 @@ export async function getConsultantsForDepartment(departmentId: string) {
       return assignments.map(a => {
           const u = a.expand?.user as User;
           if (!u) return null;
-          return {
-              id: u.id,
-              display_name: u.display_name || `${u.first_name} ${u.last_name}`,
-              title: u.title || "",
-              email: u.email,
-              availability_status: "unknown"
-          }
-      }).filter(Boolean);
+          return mapUserToConsultant(u);
+      }).filter((u): u is Consultant => u !== null);
   } catch {
       return [];
   }

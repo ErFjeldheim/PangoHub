@@ -25,7 +25,7 @@ function mapToAvailabilityRow(r: AvailabilityMonth): AvailabilityRow {
         month: r.month,
         hours_available: r.hours_available,
         hours_committed: r.hours_committed || 0,
-        status: (isAvailabilityStatus(r.status) ? r.status : "unavailable") as any,
+        status: (isAvailabilityStatus(r.status) ? r.status : "unavailable"),
         notes: r.notes || null,
     };
 }
@@ -146,7 +146,8 @@ export async function upsertAvailabilityMonthAndNotesAction(
               notes
           });
       }
-  } catch (e: any) {
+  } catch (err) {
+      const e = err as Error;
       throw new Error(`Failed to save: ${e.message}`);
   }
 
@@ -193,7 +194,8 @@ export async function upsertAvailabilityMonth(
               hours_available: hours
           });
       }
-  } catch (e: any) {
+  } catch (err) {
+      const e = err as Error;
       throw new Error(`Failed to save availability: ${e.message}`);
   }
 
@@ -229,7 +231,8 @@ export async function setCommittedHours(
               hours_committed: safeCommitted
           });
       }
-  } catch (e: any) {
+  } catch (err) {
+      const e = err as Error;
       throw new Error(`Failed to save committed hours: ${e.message}`);
   }
 

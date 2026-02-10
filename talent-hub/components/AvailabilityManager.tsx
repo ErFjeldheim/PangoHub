@@ -20,9 +20,8 @@ import {
 import {
   getAvailabilityNextSixMonths,
   upsertAvailabilityMonth,
-  type AvailabilityRow,
-  AvailabilityStatus,
 } from "@/app/actions/availability";
+import { type AvailabilityRow, type AvailabilityStatus } from "@/types/availability";
 
 interface AvailabilityManagerProps {
   profileId: string;

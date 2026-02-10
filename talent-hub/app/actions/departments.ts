@@ -37,9 +37,10 @@ export async function createDepartment(name: string, description: string) {
       const data = await pb.collection("departments").create({ name, description });
       revalidatePath("/dashboard/departments");
       return { data };
-  } catch (error: any) {
+  } catch (err) {
+      const error = err as Error;
       console.error("Error creating department:", error);
-      return { error };
+      return { error: { message: error.message } };
   }
 }
 
@@ -61,9 +62,10 @@ export async function updateDepartment(
       revalidatePath("/dashboard/departments");
       revalidatePath(`/dashboard/departments/${id}`);
       return { data };
-  } catch (error: any) {
+  } catch (err) {
+      const error = err as Error;
       console.error("Error updating department:", error);
-      return { error };
+      return { error: { message: error.message } };
   }
 }
 
@@ -73,9 +75,10 @@ export async function deleteDepartment(id: string) {
       await pb.collection("departments").delete(id);
       revalidatePath("/dashboard/departments");
       return {};
-  } catch (error: any) {
+  } catch (err) {
+      const error = err as Error;
       console.error("Error deleting department:", error);
-      return { error };
+      return { error: { message: error.message } };
   }
 }
 
@@ -92,9 +95,10 @@ export async function addConsultantToDepartment(
       });
       revalidatePath(`/dashboard/departments/${departmentId}`);
       return {};
-  } catch (error: any) {
+  } catch (err) {
+      const error = err as Error;
       console.error("Error adding consultant to department:", error);
-      return { error };
+      return { error: { message: error.message } };
   }
 }
 
@@ -108,9 +112,10 @@ export async function removeConsultantFromDepartment(
       await pb.collection("profile_departments").delete(record.id);
       revalidatePath(`/dashboard/departments/${departmentId}`);
       return {};
-  } catch (error: any) {
+  } catch (err) {
+      const error = err as Error;
       console.error("Error removing consultant from department:", error);
-      return { error };
+      return { error: { message: error.message } };
   }
 }
 
@@ -181,7 +186,8 @@ export async function assignDepartmentLeader(
           leader: leaderProfileId
       });
       return { ok: true };
-  } catch (error: any) {
+  } catch (err) {
+      const error = err as Error;
       return { ok: false, error: error.message };
   }
 }

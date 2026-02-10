@@ -20,6 +20,8 @@ import {
   verifyInvitation,
 } from "@/app/actions/invitations";
 
+import { Invitation } from "@/types/pocketbase";
+
 export default function SignUpPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -28,16 +30,7 @@ export default function SignUpPage() {
   const [lastName, setLastName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [invitation, setInvitation] = useState<{
-    id: string;
-    email: string;
-    role: "admin" | "consultant";
-    invited_by: string;
-    token_hash: string;
-    expires_at: string;
-    accepted_at: string | null;
-    created_at: string;
-  } | null>(null);
+  const [invitation, setInvitation] = useState<Invitation | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");

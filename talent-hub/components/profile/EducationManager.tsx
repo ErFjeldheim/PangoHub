@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/pocketbase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -24,25 +24,17 @@ import {
   Save,
   XCircle,
 } from "lucide-react";
+import { Education } from "@/types/pocketbase";
 
-interface Education {
-  id?: string;
-  institution: string;
-  program: string;
-  degree_level?: string;
-  start_year?: number;
-  end_year?: number;
-}
-
-interface EducationManagerProps {
+interface EducationProps {
   profileId: string;
 }
 
-export function EducationManager({ profileId }: EducationManagerProps) {
-  const supabase = createClient();
+export function EducationManager({ profileId }: EducationProps) {
+  const pb = createClient();
   const [educations, setEducations] = useState<Education[]>([]);
   const [isEditing, setIsEditing] = useState(false);
-  const [currentEducation, setCurrentEducation] = useState<Education | null>(
+  const [currentEducation, setCurrentEducation] = useState<Partial<Education> | null>(
     null
   );
   const [isLoading, setIsLoading] = useState(true);
@@ -50,23 +42,23 @@ export function EducationManager({ profileId }: EducationManagerProps) {
   useEffect(() => {
     async function fetchEducations() {
       setIsLoading(true);
-      const { data, error } = await supabase
-        .from("educations")
-        .select("*")
-        .eq("profile_id", profileId)
-        .order("end_year", { ascending: false });
-
-      if (error) {
+      try {
+          const records = await pb.collection("educations").getFullList<Education>({
+              filter: `user="${profileId}"`,
+              sort: '-end_year'
+          });
+          setEducations(records);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } catch (error: any) {
+        if (error.isAbort) return;
         console.error("Error fetching educations:", error);
         toast.error("Failed to fetch educations");
-      } else {
-        setEducations(data);
       }
       setIsLoading(false);
     }
 
     fetchEducations();
-  }, [profileId, supabase]);
+  }, [profileId, pb]);
 
   const handleAddNew = () => {
     setCurrentEducation({
@@ -82,46 +74,39 @@ export function EducationManager({ profileId }: EducationManagerProps) {
   };
 
   const handleDelete = async (educationId: string) => {
-    const { error } = await supabase
-      .from("educations")
-      .delete()
-      .eq("id", educationId);
-    if (error) {
-      toast.error("Failed to delete education");
-    } else {
-      setEducations(educations.filter((edu) => edu.id !== educationId));
-      toast.success("Education deleted");
+    try {
+        await pb.collection("educations").delete(educationId);
+        setEducations(educations.filter((edu) => edu.id !== educationId));
+        toast.success("Education deleted");
+    } catch (error) {
+        toast.error("Failed to delete education");
     }
   };
 
   const handleSave = async () => {
     if (!currentEducation) return;
 
-    const educationToSave = {
-      ...currentEducation,
-      profile_id: profileId,
-    };
+    try {
+        let record: Education;
+        const payload = {
+            ...currentEducation,
+            user: profileId
+        };
 
-    const { data, error } = await supabase
-      .from("educations")
-      .upsert(educationToSave)
-      .select()
-      .single();
-
-    if (error) {
+        if (currentEducation.id) {
+            record = await pb.collection("educations").update(currentEducation.id, payload);
+            setEducations(educations.map((edu) => (edu.id === record.id ? record : edu)));
+        } else {
+            record = await pb.collection("educations").create(payload);
+            setEducations([record, ...educations]);
+        }
+        
+        toast.success("Education saved");
+        setIsEditing(false);
+        setCurrentEducation(null);
+    } catch (error) {
       toast.error("Failed to save education");
       console.error("Error saving education:", error);
-    } else {
-      if (currentEducation.id) {
-        setEducations(
-          educations.map((edu) => (edu.id === data.id ? data : edu))
-        );
-      } else {
-        setEducations([data, ...educations]);
-      }
-      toast.success("Education saved");
-      setIsEditing(false);
-      setCurrentEducation(null);
     }
   };
 
@@ -346,7 +331,7 @@ export function EducationManager({ profileId }: EducationManagerProps) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => handleDelete(edu.id!)}
+                  onClick={() => handleDelete(edu.id)}
                   className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                 >
                   <Trash2 className="h-4 w-4" />

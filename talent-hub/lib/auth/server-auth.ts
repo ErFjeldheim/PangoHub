@@ -18,6 +18,7 @@ function mapUserToProfile(user: User) {
     portfolio_url: user.portfolio_url || "",
     display_name: user.display_name || `${user.first_name} ${user.last_name}`.trim() || user.email,
     email: user.email,
+    role: (user.role as "admin" | "consultant") || "consultant",
   };
 }
 

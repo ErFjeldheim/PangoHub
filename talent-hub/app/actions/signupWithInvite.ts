@@ -41,7 +41,8 @@ export async function signupWithInvite(opts: {
         accepted_at: new Date().toISOString(),
     });
 
-  } catch (e: any) {
+  } catch (err) {
+    const e = err as Error;
     throw new Error(e.message || "Failed to create user.");
   }
 

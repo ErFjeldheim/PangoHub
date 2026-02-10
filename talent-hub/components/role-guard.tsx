@@ -1,14 +1,14 @@
 "use client"
 
 import type React from "react"
-
 import { useEffect, useState } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { createClient } from "@/lib/pocketbase"
 import { useRouter } from "next/navigation"
+import { User } from "@/types/pocketbase"
 
 interface RoleGuardProps {
   children: React.ReactNode
-  allowedRoles: ("admin" | "consultant")[]
+  allowedRoles: string[]
   fallback?: React.ReactNode
   redirectTo?: string
 }
@@ -17,43 +17,34 @@ export function RoleGuard({ children, allowedRoles, fallback, redirectTo = "/das
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
-  const supabase = createClient()
+  const pb = createClient()
 
   useEffect(() => {
-    const checkRole = async () => {
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
-
+    const checkRole = () => {
+        const user = pb.authStore.record as User | null
+        
         if (!user) {
-          router.push("/auth/login")
-          return
+            router.push("/auth/login")
+            return
         }
 
-        const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
-
-        if (!profile) {
-          router.push("/auth/login")
-          return
-        }
-
-        const hasPermission = allowedRoles.includes(profile.role as "admin" | "consultant")
+        const hasPermission = allowedRoles.includes(user.role || '')
         setIsAuthorized(hasPermission)
 
         if (!hasPermission && redirectTo) {
-          router.push(redirectTo)
+            router.push(redirectTo)
         }
-      } catch (error) {
-        console.error("Role check failed:", error)
-        setIsAuthorized(false)
-      } finally {
         setIsLoading(false)
-      }
     }
 
     checkRole()
-  }, [allowedRoles, redirectTo, router, supabase])
+    
+    const unsubscribe = pb.authStore.onChange(() => {
+        checkRole()
+    })
+
+    return () => unsubscribe()
+  }, [allowedRoles, redirectTo, router, pb.authStore])
 
   if (isLoading) {
     return (

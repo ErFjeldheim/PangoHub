@@ -16,13 +16,12 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import type { User as SupabaseUser } from "@supabase/supabase-js";
-import type { CurrentProfile } from "@/types/profile";
+import { createClient } from "@/lib/pocketbase";
+import type { User as PBUser } from "@/types/pocketbase";
 
 interface DashboardSidebarProps {
-  user: SupabaseUser;
-  profile: CurrentProfile; // includes is_admin
+  user: PBUser;
+  profile: PBUser & { is_admin: boolean };
 }
 
 function getInitials(
@@ -42,12 +41,11 @@ function getInitials(
 export function DashboardSidebar({ user, profile }: DashboardSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const supabase = createClient();
-
-  console.log(user, profile);
+  const pb = createClient();
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    pb.authStore.clear();
+    document.cookie = "pb_auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
     router.push("/auth/login");
   };
 

@@ -1,64 +1,31 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { createClient } from "@/lib/supabase/client"
-
-interface Profile {
-  id: string
-  role: "admin" | "consultant"
-  first_name: string
-  last_name: string
-  email: string
-}
+import { createClient } from "@/lib/pocketbase"
+import { User } from "@/types/pocketbase"
 
 export function useRole() {
-  const [profile, setProfile] = useState<Profile | null>(null)
+  const [profile, setProfile] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const supabase = createClient()
+  const pb = createClient()
 
   useEffect(() => {
-    const getProfile = async () => {
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
+    setProfile(pb.authStore.record as User | null)
+    setIsLoading(false)
 
-        if (!user) {
-          setProfile(null)
-          return
-        }
-
-        const { data, error } = await supabase.from("profiles").select("*").eq("id", user.id).single()
-
-        if (error) {
-          setError(error.message)
-          return
-        }
-
-        setProfile(data)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load profile")
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    getProfile()
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(() => {
-      getProfile()
+    const unsubscribe = pb.authStore.onChange((token, model) => {
+        setProfile(model as User | null)
     })
 
-    return () => subscription.unsubscribe()
-  }, [supabase])
+    return () => {
+        unsubscribe()
+    }
+  }, [])
 
   const isAdmin = profile?.role === "admin"
   const isConsultant = profile?.role === "consultant"
-  const hasRole = (role: "admin" | "consultant") => profile?.role === role
+  const hasRole = (role: string) => profile?.role === role
 
   return {
     profile,

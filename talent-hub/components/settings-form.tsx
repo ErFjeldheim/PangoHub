@@ -3,7 +3,7 @@
 
 import type React from "react";
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/pocketbase";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -31,23 +31,22 @@ export function SettingsForm({ profile }: SettingsFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
-  const supabase = createClient();
+  const pb = createClient();
 
   const handleEmailUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.auth.updateUser({ email });
-      if (error) throw error;
+      await pb.collection("users").requestEmailChange(email);
 
-      toast.success("Email updated!", {
+      toast.success("Email update requested!", {
         description: "Please check your new email to confirm the change.",
       });
-    } catch (error: unknown) {
+    } catch (err) {
+      const error = err as Error;
       toast.error("Error", {
-        description:
-          error instanceof Error ? error.message : "Failed to update email",
+        description: error.message || "Failed to update email",
       });
     } finally {
       setIsLoading(false);
@@ -58,23 +57,15 @@ export function SettingsForm({ profile }: SettingsFormProps) {
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(
-        profile.email,
-        {
-          redirectTo: `${window.location.origin}/auth/reset-password`,
-        }
-      );
-      if (error) throw error;
+      await pb.collection("users").requestPasswordReset(profile.email);
 
       toast.success("Password reset sent!", {
         description: "Check your email for password reset instructions.",
       });
-    } catch (error: unknown) {
+    } catch (err) {
+      const error = err as Error;
       toast.error("Error", {
-        description:
-          error instanceof Error
-            ? error.message
-            : "Failed to send password reset",
+        description: error.message || "Failed to send password reset",
       });
     } finally {
       setIsLoading(false);
@@ -93,19 +84,21 @@ export function SettingsForm({ profile }: SettingsFormProps) {
     setIsDeleting(true);
 
     try {
-      await supabase.auth.signOut();
-      router.push("/auth/login");
+      if (pb.authStore.record) {
+          await pb.collection("users").delete(pb.authStore.record.id);
+          pb.authStore.clear();
+          document.cookie = "pb_auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+          router.push("/auth/login");
+      }
 
-      toast.success("Account deletion requested", {
-        description:
-          "Please contact an administrator to complete account deletion.",
-      });
-    } catch (error: unknown) {
+      toast.success("Account deleted");
+    } catch (err) {
+      const error = err as Error;
       toast.error("Error", {
-        description:
-          error instanceof Error ? error.message : "Failed to delete account",
+        description: error.message || "Failed to delete account",
       });
     } finally {
+
       setIsDeleting(false);
     }
   };
