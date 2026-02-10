@@ -1,44 +1,99 @@
 # Talent Hub
 
-## Overview
-
-Talent Hub is a modern, web-based platform designed to streamline talent and project management within an organization. It provides a centralized hub for managing consultants, tracking their availability and skills, and assigning them to projects. The application offers a clear overview of departmental resources, helping to optimize resource allocation and project staffing.
-
-This platform is ideal for organizations looking to:
-
-- Improve visibility into their internal talent pool.
-- Efficiently match consultants with project needs based on skills and availability.
-- Centralize project and resource management to avoid scheduling conflicts.
-- Empower department heads with data-driven insights into their teams.
-
-## Key Features
-
-- **Consultant Profiles:** Detailed profiles for each consultant, including their skills, work experience, education, and contact information.
-- **Availability Tracking:** An intuitive system for consultants to update their availability, giving managers a real-time view of who is available for new projects.
-- **Project Management:** Functionality to create and manage projects, define roles, and assign consultants to those roles.
-- **Department Dashboards:** Insightful dashboards for department heads to view consultant availability, project assignments, and other key metrics at a glance.
-- **Skills-Based Search:** A powerful search feature to easily find consultants with specific skills required for a project.
-- **Role-Based Access Control:** A secure access control system to manage user permissions (e.g., admin, manager, consultant) and invite new users to the platform.
+Talent Hub is a comprehensive platform for managing consultants, projects, and departments. It provides a centralized system for tracking consultant availability, skills, and project assignments. The platform is designed to streamline the process of finding the right talent for projects and managing department resources effectively.
 
 ## Tech Stack
 
-- **Frontend:** [Next.js](https://nextjs.org/) with [React](https://reactjs.org/) and [TypeScript](https://www.typescriptlang.org/) for a modern, type-safe, and performant user interface.
-- **Backend & Database:** [Supabase](https://supabase.io/), an open-source Firebase alternative, providing a PostgreSQL database, authentication, and auto-generated APIs.
-- **Styling:** [Tailwind CSS](https://tailwindcss.com/) with [Shadcn UI](https://ui.shadcn.com/) for a utility-first CSS framework and a set of reusable UI components.
+- **Framework**: [Next.js 16](https://nextjs.org/)
+- **Language**: [TypeScript](https://www.typescriptlang.org/)
+- **Database**: [PocketBase](https://pocketbase.io/)
+- **Authentication**: PocketBase Auth
+- **UI**: [React 19](https://reactjs.org/)
+- **Styling**: [Tailwind CSS 4](https://tailwindcss.com/)
+- **UI Components**: [Shadcn UI](https://ui.shadcn.com/)
+- **Linting**: [ESLint](https://eslint.org/)
 
 ## Getting Started
 
-For detailed instructions on how to set up and run this project locally for development, please refer to the `README.md` file in the repository.
+These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
 
-## Contributing
+### Prerequisites
 
-Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
+- Node.js (v20 or later)
+- npm, yarn, or pnpm
 
-If you have a suggestion that would make this better, please fork the repo and create a pull request. You can also simply open an issue with the tag "enhancement".
+### Installation
 
-1.  Fork the Project
-2.  Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3.  Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4.  Push to the Branch (`git push origin feature/AmazingFeature`)
-5.  Open a Pull Request
+1. **Clone the repository:**
 
+   ```bash
+   git clone https://github.com/your-username/talent-hub.git
+   cd talent-hub
+   ```
+
+2. **Install dependencies:**
+
+   ```bash
+   npm install
+   # or
+   yarn install
+   # or
+   pnpm install
+   ```
+
+3. **Configuration:**
+
+   The project is currently configured to connect to the remote PocketBase instance at `https://db.pangohub.fjelldata.com`.
+   
+   If you need to customize this, check `lib/pocketbase.ts` and `lib/pocketbase-server.ts`.
+
+4. **Running the Application:**
+
+   To run the application in development mode:
+
+   ```bash
+   npm run dev
+   # or
+   yarn dev
+   # or
+   pnpm dev
+   ```
+
+   Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+## Project Structure
+
+The project follows a standard Next.js `app` directory structure.
+
+- `app/`: Contains all the routes, UI, and business logic.
+  - `actions/`: Server Actions for data mutations and fetching.
+  - `(auth)/`: Authentication-related pages (login, signup, etc.).
+  - `dashboard/`: The main dashboard layout and pages.
+  - `api/`: API routes.
+- `components/`: Shared React components.
+- `lib/`: Utility functions and libraries (including PocketBase client setup).
+- `types/`: TypeScript type definitions (including PocketBase schema types).
+- `public/`: Static assets.
+
+## Database
+
+The project uses PocketBase as the backend.
+
+- **Schema**: The database schema (collections, fields, API rules) is managed within PocketBase.
+- **Types**: TypeScript definitions for the database schema are located in `types/pocketbase.ts`.
+
+## Linting and Code Style
+
+The project uses ESLint for linting and code style enforcement.
+
+To run the linter:
+
+```bash
+npm run lint
+```
+
+## Deployment
+
+The application is ready to be deployed on [Vercel](https://vercel.com/), the platform from the creators of Next.js.
+
+For more information, see the [Next.js deployment documentation](https://nextjs.org/docs/deployment).
