@@ -1,51 +1,57 @@
-// lib/auth/server-auth.ts
-import { createClient } from "@/lib/supabase/server";
+import { createServerClient } from "@/lib/pocketbase-server";
 import { redirect } from "next/navigation";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { CurrentProfile } from "@/types/profile";
+import { User } from "@/types/pocketbase";
 
-async function getServerClient(): Promise<SupabaseClient> {
-  return await createClient();
+function mapUserToProfile(user: User) {
+  return {
+    ...user,
+    created_at: user.created,
+    updated_at: user.updated,
+    first_name: user.first_name || "",
+    last_name: user.last_name || "",
+    title: user.title || "",
+    bio: user.bio || "",
+    phone: user.phone || "",
+    location: user.location || "",
+    linkedin_url: user.linkedin_url || "",
+    github_url: user.github_url || "",
+    portfolio_url: user.portfolio_url || "",
+    display_name: user.display_name || `${user.first_name} ${user.last_name}`.trim() || user.email,
+    email: user.email,
+  };
 }
 
 export async function getCurrentUser() {
-  const supabase = await getServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user ?? null;
+  const pb = await createServerClient();
+  return pb.authStore.record as User | null;
 }
 
 export async function isAdmin(uid?: string): Promise<boolean> {
-  const supabase = await getServerClient();
-  let userId = uid;
-  if (!userId) {
-    const { data: auth } = await supabase.auth.getUser();
-    userId = auth?.user?.id;
-  }
-  if (!userId) return false;
+  const pb = await createServerClient();
+  const currentUser = pb.authStore.record as User | null;
 
-  const { data, error } = await supabase.rpc("is_admin", { uid: userId });
-  if (error) return false;
-  return !!data;
+  if (!currentUser) return false;
+
+  if (uid && currentUser.id !== uid) {
+      try {
+          const user = await pb.collection('users').getOne(uid) as User;
+          return user.role === 'admin';
+      } catch {
+          return false;
+      }
+  }
+
+  return currentUser.role === 'admin';
 }
 
-export async function getCurrentProfile(): Promise<CurrentProfile | null> {
-  const supabase = await getServerClient();
+export async function getCurrentProfile() {
   const user = await getCurrentUser();
   if (!user) return null;
 
-  // Pull email + display_name from the view
-  const { data: row, error } = await supabase
-    .from("v_profiles_with_email")
-    .select("*")
-    .eq("id", user.id)
-    .single();
-
-  if (error || !row) return null;
-
-  const admin = await isAdmin(user.id);
-  return { ...row, is_admin: admin } as CurrentProfile;
+  const profile = mapUserToProfile(user);
+  const admin = user.role === 'admin';
+  
+  return { ...profile, is_admin: admin };
 }
 
 export async function requireAuth() {
