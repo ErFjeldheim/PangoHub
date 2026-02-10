@@ -1,5 +1,5 @@
 import { listProjects, createProject } from "@/app/actions/projects";
-import { createClient } from "@/lib/supabase/server";
+import { createServerClient } from "@/lib/pocketbase-server";
 import { revalidatePath } from "next/cache";
 import { ProjectCard } from "@/components/projects/project-card";
 import { CreateProjectForm } from "@/components/projects/create-project-form";
@@ -11,6 +11,8 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { isAdmin as checkIsAdmin } from "@/lib/auth/server-auth";
+import { Client, Department, User } from "@/types/pocketbase";
 
 export const dynamic = "force-dynamic";
 
@@ -25,26 +27,40 @@ export default async function ProjectsPage({
 }: {
   searchParams?: SearchParams;
 }) {
-  const supabase = await createClient();
+  const pb = await createServerClient();
 
   // Fetch admin flag
-  const { data: auth } = await supabase.auth.getUser();
-  let isAdmin = false;
-  if (auth?.user) {
-    const { data } = await supabase.rpc("is_admin", { uid: auth.user.id });
-    isAdmin = !!data;
-  }
+  const isAdmin = await checkIsAdmin();
 
   // Fetch departments for dropdown
-  const { data: departments } = await supabase.rpc(
-    "get_departments_with_details"
-  );
+  let departments: any[] = [];
+  try {
+      const records = await pb.collection("departments").getFullList<Department>({ sort: 'name', expand: 'leader' });
+      const assignments = await pb.collection("profile_departments").getFullList();
+      const countMap = new Map<string, number>();
+      assignments.forEach(a => countMap.set(a.department, (countMap.get(a.department) || 0) + 1));
+
+      departments = records.map(d => {
+          const leader = d.expand?.leader as User;
+          return {
+              id: d.id,
+              name: d.name,
+              consultant_count: countMap.get(d.id) || 0,
+              description: d.description,
+              leader_name: leader ? (leader.display_name || `${leader.first_name} ${leader.last_name}`) : null
+          }
+      });
+  } catch (e) {
+      console.error("Error fetching departments", e);
+  }
 
   // Fetch clients for the create form dropdown
-  const { data: clients } = await supabase
-    .from("clients")
-    .select("id, name")
-    .order("name", { ascending: true });
+  let clients: any[] = [];
+  try {
+      clients = await pb.collection("clients").getFullList<Client>({ sort: 'name' });
+  } catch (e) {
+      console.error("Error fetching clients", e);
+  }
 
   // Fetch filtered projects
   const projects = await listProjects({

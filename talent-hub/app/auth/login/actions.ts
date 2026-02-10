@@ -2,7 +2,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createServerClient } from "@/lib/pocketbase-server";
+import { cookies } from "next/headers";
 
 function expandError(err: unknown) {
   if (!err) return null;
@@ -25,32 +26,30 @@ export async function login(
     return { error: "Email and password are required." };
   }
 
-  const supabase = await createClient();
+  const pb = await createServerClient();
 
   try {
-    const pre = await supabase.from("profiles").select("id").limit(1);
-    if (pre.error) {
-      console.error("Preflight (anon) error:", expandError(pre.error));
-      return {
-        error:
-          `DB preflight failed: ${pre.error.message}` +
-          (pre.error.details ? ` — ${pre.error.details}` : ""),
-      };
+    await pb.collection('users').authWithPassword(email, password);
+    
+    if (!pb.authStore.isValid) {
+        return { error: "Authentication failed." };
     }
-  } catch (e: unknown) {
-    console.error("Preflight (anon) threw:", expandError(e));
-    return { error: "DB preflight threw. Check server logs." };
-  }
 
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-  if (error) {
-    console.error("Auth signIn error:", expandError(error));
+    const cookieString = pb.authStore.exportToCookie({ httpOnly: false });
+    const match = cookieString.match(/pb_auth=([^;]+)/);
+      
+    if (match) {
+        (await cookies()).set('pb_auth', match[1], {
+            path: '/',
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            httpOnly: false
+        });
+    }
+  } catch (e: any) {
+    console.error("Auth signIn error:", expandError(e));
     return {
-      error:
-        error.message === "Database error querying schema"
-          ? "Auth failed due to a database schema/permissions issue."
-          : error.message,
+      error: e.message || "Failed to authenticate."
     };
   }
 
