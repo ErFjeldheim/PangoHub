@@ -1,8 +1,9 @@
 // app/actions/accessRequests.ts
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createServerClient } from "@/lib/pocketbase-server";
 import { createInvitation } from "@/app/actions/invitations";
+import type { AccessRequest as PBAccessRequest } from "@/types/pocketbase";
 
 export type AccessRequest = {
   id: string;
@@ -13,12 +14,23 @@ export type AccessRequest = {
   created_at: string;
 };
 
+function mapToAccessRequest(record: PBAccessRequest): AccessRequest {
+    return {
+        id: record.id,
+        email: record.email,
+        name: record.name || null,
+        message: record.message || null,
+        status: record.status as "pending" | "approved" | "rejected",
+        created_at: record.created,
+    }
+}
+
 export async function createAccessRequest(input: {
   email: string;
   name: string;
   message: string;
 }) {
-  const supabase = await createClient();
+  const pb = await createServerClient();
 
   const email = input.email.trim();
   const name = input.name.trim();
@@ -28,81 +40,78 @@ export async function createAccessRequest(input: {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
     throw new Error("Please enter a valid email address.");
 
-  const { error } = await supabase
-    .from("access_requests")
-    .insert({ email, name, message }); // <-- no .select()
-
-  if (error) {
-    console.error("access_requests insert error:", error);
-    // if you later add a unique pending index, you can special-case code 23505 here
-    throw new Error("Could not submit your request. Please try again.");
+  try {
+      await pb.collection("access_requests").create({
+          email,
+          name,
+          message,
+          status: 'pending'
+      });
+  } catch (e: any) {
+      console.error("access_requests insert error:", e);
+      throw new Error("Could not submit your request. Please try again.");
   }
 
-  return { ok: true }; // no id needed
+  return { ok: true };
 }
 
-/** Admin: list pending access requests (RLS enforces is_admin) */
 export async function getPendingAccessRequests(): Promise<AccessRequest[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("access_requests")
-    .select("id, email, name, message, status, created_at")
-    .eq("status", "pending")
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.error("getPendingAccessRequests error:", error);
-    throw new Error("Failed to fetch access requests.");
+  const pb = await createServerClient();
+  try {
+      const records = await pb.collection("access_requests").getFullList<PBAccessRequest>({
+          filter: 'status="pending"',
+          sort: '-created'
+      });
+      return records.map(mapToAccessRequest);
+  } catch (e) {
+      console.error("getPendingAccessRequests error:", e);
+      throw new Error("Failed to fetch access requests.");
   }
-  return data as AccessRequest[];
 }
 
-/** Admin: approve request -> create invitation + mark approved */
 export async function approveAccessRequest(
   id: string,
   role: "consultant" | "admin" = "consultant"
 ) {
-  const supabase = await createClient();
+  const pb = await createServerClient();
 
-  // fetch request (optional, but nice to validate)
-  const { data: req, error: fetchErr } = await supabase
-    .from("access_requests")
-    .select("id,email,status")
-    .eq("id", id)
-    .single();
+  let req: PBAccessRequest;
+  try {
+      req = await pb.collection("access_requests").getOne<PBAccessRequest>(id);
+  } catch {
+      throw new Error("Request not found.");
+  }
 
-  if (fetchErr || !req) throw new Error("Request not found.");
   if (req.status !== "pending") throw new Error("Request is not pending.");
 
-  // create invitation (uses current admin user as invited_by; RLS applies)
   const { inviteUrl } = await createInvitation(req.email, role);
 
-  // mark approved
-  const { error: updErr } = await supabase
-    .from("access_requests")
-    .update({ status: "approved", decided_at: new Date().toISOString() })
-    .eq("id", id);
-
-  if (updErr) {
-    console.error("approveAccessRequest update error:", updErr);
-    throw new Error("Failed to mark request approved.");
+  try {
+      await pb.collection("access_requests").update(id, {
+          status: "approved",
+          decided_at: new Date().toISOString(),
+          decided_by: pb.authStore.record?.id
+      });
+  } catch (e) {
+      console.error("approveAccessRequest update error:", e);
+      throw new Error("Failed to mark request approved.");
   }
 
   return { inviteUrl };
 }
 
-/** Admin: reject request */
 export async function rejectAccessRequest(id: string) {
-  const supabase = await createClient();
+  const pb = await createServerClient();
 
-  const { error } = await supabase
-    .from("access_requests")
-    .update({ status: "rejected", decided_at: new Date().toISOString() })
-    .eq("id", id);
-
-  if (error) {
-    console.error("rejectAccessRequest error:", error);
-    throw new Error("Failed to reject request.");
+  try {
+      await pb.collection("access_requests").update(id, {
+          status: "rejected",
+          decided_at: new Date().toISOString(),
+          decided_by: pb.authStore.record?.id
+      });
+  } catch (e) {
+      console.error("rejectAccessRequest error:", e);
+      throw new Error("Failed to reject request.");
   }
 
   return { ok: true };

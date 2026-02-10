@@ -1,12 +1,10 @@
-// app/actions/availability.ts
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createServerClient } from "@/lib/pocketbase-server";
 import { nextNMonthsUTC } from "@/lib/date/availability";
 import { revalidatePath } from "next/cache";
 import { requireSelf } from "@/lib/auth/server-auth";
-import type { Database } from "@/types/supabase";
-
+import type { AvailabilityMonth } from "@/types/pocketbase";
 import {
   type AvailabilityRow,
   type Availability,
@@ -15,75 +13,44 @@ import {
   isAvailabilityStatus,
 } from "@/types/availability";
 
-// -------------------------------
-// DB type aliases (from codegen)
-// -------------------------------
-type AvailabilityMonthsRow =
-  Database["public"]["Tables"]["availability_months"]["Row"];
-type AvailabilityMonthsInsert =
-  Database["public"]["Tables"]["availability_months"]["Insert"];
-
-type DeptAggArgs =
-  Database["public"]["Functions"]["get_aggregated_availability_for_department"]["Args"];
-type DeptAggReturn =
-  Database["public"]["Functions"]["get_aggregated_availability_for_department"]["Returns"];
-
-// -------------------------------
-// mappers & utils
-// -------------------------------
 function clampHours(n: unknown, max = 744): number {
   const v = Number(n);
   if (!Number.isFinite(v) || v < 0) return 0;
   return Math.min(v, max);
 }
 
-function mapDbRowToAvailabilityRow(r: AvailabilityMonthsRow): AvailabilityRow {
-  const hours_available = Number(r.hours_available ?? 0);
-  const hours_committed = Number(r.hours_committed ?? 0);
-
-  // status may be null/text from DB; coerce safely
-  const statusRaw = (r as { status?: unknown })?.status ?? null;
-  const status = isAvailabilityStatus(statusRaw) ? statusRaw : "unavailable";
-
-  return {
-    profile_id: r.profile_id as string, // codegen sometimes makes these nullable on views; table row should be string
-    month: r.month as string,
-    hours_available,
-    hours_committed,
-    status,
-    notes: r.notes ?? null,
-  };
+function mapToAvailabilityRow(r: AvailabilityMonth): AvailabilityRow {
+    return {
+        profile_id: r.user,
+        month: r.month,
+        hours_available: r.hours_available,
+        hours_committed: r.hours_committed || 0,
+        status: (isAvailabilityStatus(r.status) ? r.status : "unavailable") as any,
+        notes: r.notes || null,
+    };
 }
 
-// -------------------------------
-// queries
-// -------------------------------
-/** Fetches merged window for N months, filling missing months with defaults. */
 export async function getAvailabilityForWindow(
   profileId: string,
   monthsAhead = 6
 ): Promise<AvailabilityRow[]> {
-  const supabase = await createClient();
+  const pb = await createServerClient();
   const months = nextNMonthsUTC(monthsAhead);
   const from = months[0];
   const to = months[months.length - 1];
 
-  const { data, error } = await supabase
-    .from("availability_months")
-    .select("*")
-    .eq("profile_id", profileId)
-    .gte("month", from)
-    .lte("month", to)
-    .order("month", { ascending: true });
+  let records: AvailabilityMonth[] = [];
+  try {
+      records = await pb.collection("availability_months").getFullList<AvailabilityMonth>({
+          filter: `user="${profileId}" && month>="${from}" && month<="${to}"`,
+          sort: 'month'
+      });
+  } catch (e) {
+      console.error("fetch availability error:", e);
+  }
 
-  if (error) throw new Error(`Failed to fetch availability: ${error.message}`);
-
-  const rows = (data ?? []) as AvailabilityMonthsRow[];
   const byMonth = new Map<string, AvailabilityRow>(
-    rows.map((r) => {
-      const mapped = mapDbRowToAvailabilityRow(r);
-      return [mapped.month, mapped];
-    })
+    records.map((r) => [r.month, mapToAvailabilityRow(r)])
   );
 
   return months.map((m) => byMonth.get(m) ?? emptyAvailability(profileId, m));
@@ -93,7 +60,6 @@ export async function getAvailabilityNextSixMonths(profileId: string) {
   return getAvailabilityForWindow(profileId, 6);
 }
 
-/** Returns exactly the UI shape for the *current* month. */
 export async function getConsultantCurrentAvailability(
   profileId: string
 ): Promise<Availability | null> {
@@ -103,25 +69,47 @@ export async function getConsultantCurrentAvailability(
 }
 
 export async function getAggregatedAvailabilityForDepartment(id: string) {
-  const supabase = await createClient();
-  const args = { p_department_id: id } satisfies DeptAggArgs;
+    const pb = await createServerClient();
+    
+    let userIds: string[] = [];
+    try {
+        const deptProfiles = await pb.collection('profile_departments').getFullList({
+            filter: `department="${id}"`
+        });
+        userIds = deptProfiles.map(dp => dp.user);
+    } catch {
+        return [];
+    }
+    
+    if (userIds.length === 0) return [];
 
-  const { data, error } = await supabase.rpc(
-    "get_aggregated_availability_for_department",
-    args
-  );
+    let availability: AvailabilityMonth[] = [];
+    try {
+        const userFilter = userIds.map(uid => `user="${uid}"`).join(" || ");
+        const currentMonth = new Date().toISOString().substring(0, 7);
+        availability = await pb.collection('availability_months').getFullList<AvailabilityMonth>({
+            filter: `(${userFilter}) && month >= "${currentMonth}"`
+        });
+    } catch {
+        return [];
+    }
 
-  if (error) {
-    console.error("Error fetching aggregated availability:", error);
-    return [] as DeptAggReturn;
-  }
-  return (data ?? []) as DeptAggReturn;
+    const aggMap = new Map<string, { total_hours_available: number; total_hours_committed: number; total_hours_free: number }>();
+    
+    for (const row of availability) {
+        const entry = aggMap.get(row.month) || { total_hours_available: 0, total_hours_committed: 0, total_hours_free: 0 };
+        entry.total_hours_available += row.hours_available;
+        entry.total_hours_committed += (row.hours_committed || 0);
+        entry.total_hours_free = entry.total_hours_available - entry.total_hours_committed;
+        aggMap.set(row.month, entry);
+    }
+
+    return Array.from(aggMap.entries()).map(([month, stats]) => ({
+        month,
+        ...stats
+    })).sort((a, b) => a.month.localeCompare(b.month));
 }
 
-// -------------------------------
-// mutations
-// -------------------------------
-/** Combined server action: upsert hours *and* notes in one round trip. */
 export async function upsertAvailabilityMonthAndNotesAction(
   formData: FormData,
   opts?: { revalidate?: string }
@@ -135,111 +123,115 @@ export async function upsertAvailabilityMonthAndNotesAction(
       : null;
 
   await requireSelf(profileId);
-  const supabase = await createClient();
+  const pb = await createServerClient();
 
-  const payload = {
-    profile_id: profileId,
-    month,
-    hours_available: hours,
-    notes,
-  } satisfies AvailabilityMonthsInsert;
+  let recordId: string | null = null;
+  try {
+      const existing = await pb.collection('availability_months').getFirstListItem(`user="${profileId}" && month="${month}"`);
+      recordId = existing.id;
+  } catch {}
 
-  const { data, error } = await supabase
-    .from("availability_months")
-    .upsert(payload, { onConflict: "profile_id,month" })
-    .select()
-    .single();
+  let record: AvailabilityMonth;
+  try {
+      if (recordId) {
+          record = await pb.collection('availability_months').update<AvailabilityMonth>(recordId, {
+              hours_available: hours,
+              notes
+          });
+      } else {
+          record = await pb.collection('availability_months').create<AvailabilityMonth>({
+              user: profileId,
+              month,
+              hours_available: hours,
+              notes
+          });
+      }
+  } catch (e: any) {
+      throw new Error(`Failed to save: ${e.message}`);
+  }
 
-  if (error) throw new Error(`Failed to save: ${error.message}`);
-
-  const mapped = mapDbRowToAvailabilityRow(data as AvailabilityMonthsRow);
+  const mapped = mapToAvailabilityRow(record);
   revalidatePath(opts?.revalidate ?? "/dashboard/profile");
   return mapped;
 }
 
-/** Back-compat: hours-only form action (wraps combined). */
 export async function upsertAvailabilityMonthAction(formData: FormData) {
   if (!formData.get("hours_available")) formData.set("hours_available", "0");
   await upsertAvailabilityMonthAndNotesAction(formData);
 }
 
-/** Back-compat: notes-only form action (wraps combined). */
 export async function upsertAvailabilityNotesAction(formData: FormData) {
   if (!formData.get("hours_available")) formData.set("hours_available", "0");
   await upsertAvailabilityMonthAndNotesAction(formData);
 }
 
-/** Programmatic helper: set hours only (non-form). */
 export async function upsertAvailabilityMonth(
   profileId: string,
-  month: string, // "YYYY-MM-01"
+  month: string,
   hoursAvailable: number
 ): Promise<AvailabilityRow> {
   await requireSelf(profileId);
-  const supabase = await createClient();
+  const pb = await createServerClient();
   const hours = clampHours(hoursAvailable);
 
-  const payload = {
-    profile_id: profileId,
-    month,
-    hours_available: hours,
-  } satisfies AvailabilityMonthsInsert;
+  let recordId: string | null = null;
+  try {
+      const existing = await pb.collection('availability_months').getFirstListItem(`user="${profileId}" && month="${month}"`);
+      recordId = existing.id;
+  } catch {}
 
-  const { data, error } = await supabase
-    .from("availability_months")
-    .upsert(payload, { onConflict: "profile_id,month" })
-    .select()
-    .single();
+  let record: AvailabilityMonth;
+  try {
+      if (recordId) {
+          record = await pb.collection('availability_months').update<AvailabilityMonth>(recordId, {
+              hours_available: hours
+          });
+      } else {
+          record = await pb.collection('availability_months').create<AvailabilityMonth>({
+              user: profileId,
+              month,
+              hours_available: hours
+          });
+      }
+  } catch (e: any) {
+      throw new Error(`Failed to save availability: ${e.message}`);
+  }
 
-  if (error) throw new Error(`Failed to save availability: ${error.message}`);
-  return mapDbRowToAvailabilityRow(data as AvailabilityMonthsRow);
+  return mapToAvailabilityRow(record);
 }
 
-/** Programmatic helper: set committed hours (e.g., internal planning UI). */
 export async function setCommittedHours(
   profileId: string,
   month: string,
   hoursCommitted: number
 ): Promise<AvailabilityRow> {
   await requireSelf(profileId);
-  const supabase = await createClient();
+  const pb = await createServerClient();
   const safeCommitted = clampHours(hoursCommitted);
 
-  // 1) Try update-only
-  const { data: updated, error: updateErr } = await supabase
-    .from("availability_months")
-    .update({ hours_committed: safeCommitted })
-    .eq("profile_id", profileId)
-    .eq("month", month)
-    .select()
-    .maybeSingle();
+  let recordId: string | null = null;
+  try {
+      const existing = await pb.collection('availability_months').getFirstListItem(`user="${profileId}" && month="${month}"`);
+      recordId = existing.id;
+  } catch {}
 
-  // If an actual error (not just "no rows"), bail
-  if (updateErr && updateErr.code !== "PGRST116") {
-    throw new Error(`Failed to update committed hours: ${updateErr.message}`);
+  let record: AvailabilityMonth;
+  try {
+      if (recordId) {
+          record = await pb.collection('availability_months').update<AvailabilityMonth>(recordId, {
+              hours_committed: safeCommitted
+          });
+      } else {
+          record = await pb.collection('availability_months').create<AvailabilityMonth>({
+              user: profileId,
+              month,
+              hours_available: 0,
+              hours_committed: safeCommitted
+          });
+      }
+  } catch (e: any) {
+      throw new Error(`Failed to save committed hours: ${e.message}`);
   }
 
-  if (updated) {
-    return mapDbRowToAvailabilityRow(updated as AvailabilityMonthsRow);
-  }
-
-  // 2) Row didn't exist -> insert with a safe default for hours_available
-  const insertPayload = {
-    profile_id: profileId,
-    month,
-    hours_available: 0, // safe default for brand new month
-    hours_committed: safeCommitted,
-  } satisfies AvailabilityMonthsInsert;
-
-  const { data: inserted, error: insertErr } = await supabase
-    .from("availability_months")
-    .insert(insertPayload)
-    .select()
-    .single();
-
-  if (insertErr) {
-    throw new Error(`Failed to insert committed hours: ${insertErr.message}`);
-  }
-
-  return mapDbRowToAvailabilityRow(inserted as AvailabilityMonthsRow);
+  return mapToAvailabilityRow(record);
 }
