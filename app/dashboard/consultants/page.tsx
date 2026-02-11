@@ -8,10 +8,12 @@ import { ConsultantGrid } from "@/components/consultants/ConsultantGrid";
 import { ConsultantEmptyState } from "@/components/consultants/ConsultantEmptyState";
 import type { Consultant } from "@/types/consultant";
 import { UserPlus, Users } from "lucide-react";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 export default function ConsultantsPage() {
   const [consultants, setConsultants] = useState<Consultant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { t } = useLanguage();
 
   useEffect(() => {
     const run = async () => {
@@ -32,16 +34,16 @@ export default function ConsultantsPage() {
             <div className="p-2 rounded-lg bg-primary/10">
               <Users className="h-5 w-5 text-primary" />
             </div>
-            <h1 className="text-3xl font-bold tracking-tight">Consultants</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{t.consultants.title}</h1>
           </div>
           <p className="text-muted-foreground">
-            Manage and connect with your consultant network
+            {t.consultants.subtitle}
           </p>
         </div>
         <Link href="/dashboard/invite">
           <Button className="gap-2">
             <UserPlus className="h-4 w-4" />
-            Invite Consultant
+            {t.consultants.invite}
           </Button>
         </Link>
       </div>
@@ -52,7 +54,7 @@ export default function ConsultantsPage() {
           <div className="flex flex-col items-center gap-3">
             <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
             <p className="text-sm text-muted-foreground">
-              Loading consultants...
+              {t.consultants.loading}
             </p>
           </div>
         </div>

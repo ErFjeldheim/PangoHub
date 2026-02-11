@@ -1,4 +1,3 @@
-// components/settings-form.tsx
 "use client";
 
 import type React from "react";
@@ -16,6 +15,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { useTheme } from "next-themes";
+import { Globe, Moon, Sun } from "lucide-react";
 
 type SettingsProfile = {
   email: string;
@@ -32,6 +34,8 @@ export function SettingsForm({ profile }: SettingsFormProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
   const pb = createClient();
+  const { t, language, setLanguage } = useLanguage();
+  const { theme, setTheme } = useTheme();
 
   const handleEmailUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,8 +44,8 @@ export function SettingsForm({ profile }: SettingsFormProps) {
     try {
       await pb.collection("users").requestEmailChange(email);
 
-      toast.success("Email update requested!", {
-        description: "Please check your new email to confirm the change.",
+      toast.success(t.settings.messages.emailRequested, {
+        description: t.settings.messages.emailRequestedDesc,
       });
     } catch (err) {
       const error = err as Error;
@@ -59,8 +63,8 @@ export function SettingsForm({ profile }: SettingsFormProps) {
     try {
       await pb.collection("users").requestPasswordReset(profile.email);
 
-      toast.success("Password reset sent!", {
-        description: "Check your email for password reset instructions.",
+      toast.success(t.settings.messages.passwordResetSent, {
+        description: t.settings.messages.passwordResetDesc,
       });
     } catch (err) {
       const error = err as Error;
@@ -75,7 +79,7 @@ export function SettingsForm({ profile }: SettingsFormProps) {
   const handleDeleteAccount = async () => {
     if (
       !confirm(
-        "Are you sure you want to delete your account? This action cannot be undone."
+        t.settings.confirmDelete
       )
     ) {
       return;
@@ -91,7 +95,7 @@ export function SettingsForm({ profile }: SettingsFormProps) {
           router.push("/auth/login");
       }
 
-      toast.success("Account deleted");
+      toast.success(t.settings.messages.accountDeleted);
     } catch (err) {
       const error = err as Error;
       toast.error("Error", {
@@ -105,18 +109,80 @@ export function SettingsForm({ profile }: SettingsFormProps) {
 
   return (
     <div className="space-y-6">
-      {/* Account Settings */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>{t.settings.theme}</CardTitle>
+            <CardDescription>{t.settings.themeSubtitle}</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            <Button
+              variant={theme === "light" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setTheme("light")}
+              className="gap-2"
+            >
+              <Sun className="h-4 w-4" />
+              Light
+            </Button>
+            <Button
+              variant={theme === "dark" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setTheme("dark")}
+              className="gap-2"
+            >
+              <Moon className="h-4 w-4" />
+              Dark
+            </Button>
+            <Button
+              variant={theme === "system" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setTheme("system")}
+            >
+              System
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>{t.settings.language}</CardTitle>
+            <CardDescription>{t.settings.languageSubtitle}</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            <Button
+              variant={language === "nb" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setLanguage("nb")}
+              className="gap-2"
+            >
+              <Globe className="h-4 w-4" />
+              Norsk
+            </Button>
+            <Button
+              variant={language === "en" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setLanguage("en")}
+              className="gap-2"
+            >
+              <Globe className="h-4 w-4" />
+              English
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
       <Card>
         <CardHeader>
-          <CardTitle>Account Settings</CardTitle>
+          <CardTitle>{t.settings.account}</CardTitle>
           <CardDescription>
-            Manage your account information and security
+            {t.settings.accountSubtitle}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <form onSubmit={handleEmailUpdate} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
+              <Label htmlFor="email">{t.settings.email}</Label>
               <Input
                 id="email"
                 type="email"
@@ -126,7 +192,7 @@ export function SettingsForm({ profile }: SettingsFormProps) {
               />
             </div>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Updating..." : "Update Email"}
+              {isLoading ? t.common.saving : t.settings.updateEmail}
             </Button>
           </form>
 
@@ -136,41 +202,39 @@ export function SettingsForm({ profile }: SettingsFormProps) {
               onClick={handlePasswordReset}
               disabled={isLoading}
             >
-              Reset Password
+              {t.settings.resetPassword}
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Role Information */}
       <Card>
         <CardHeader>
-          <CardTitle>Role Information</CardTitle>
-          <CardDescription>Your current role and permissions</CardDescription>
+          <CardTitle>{t.settings.role}</CardTitle>
+          <CardDescription>{t.settings.roleSubtitle}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Current Role:</span>
+              <span className="text-sm font-medium">{t.settings.currentRole}</span>
               <span className="text-sm capitalize bg-primary/10 text-primary px-2 py-1 rounded">
-                {profile.role}
+                {profile.role === "admin" ? t.nav.admin : t.nav.member}
               </span>
             </div>
             <div className="text-xs text-muted-foreground">
               {profile.role === "admin"
-                ? "You have full access to manage consultants, send invitations, and view analytics."
-                : "You can manage your profile and view other consultants in the network."}
+                ? t.settings.adminDesc
+                : t.settings.memberDesc}
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Danger Zone */}
       <Card className="border-destructive/20">
         <CardHeader>
-          <CardTitle className="text-destructive">Danger Zone</CardTitle>
+          <CardTitle className="text-destructive">{t.settings.dangerZone}</CardTitle>
           <CardDescription>
-            Irreversible and destructive actions
+            {t.settings.dangerZoneSubtitle}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -179,7 +243,7 @@ export function SettingsForm({ profile }: SettingsFormProps) {
             onClick={handleDeleteAccount}
             disabled={isDeleting}
           >
-            {isDeleting ? "Deleting..." : "Delete Account"}
+            {isDeleting ? t.common.loading : t.settings.deleteAccount}
           </Button>
         </CardContent>
       </Card>
