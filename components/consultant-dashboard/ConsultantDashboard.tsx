@@ -1,8 +1,11 @@
+"use client";
+
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 import {
   User,
   Calendar,
@@ -45,6 +48,7 @@ export function ConsultantDashboard({
   opportunities: ProjectItem[];
   primaryDepartmentName?: string | null;
 }) {
+  const { t, language } = useLanguage();
   const pct = Math.round(completenessPct || 0);
   const activeProjects = (myProjects || []).filter((p) => p.is_active);
 
@@ -52,7 +56,7 @@ export function ConsultantDashboard({
   const formatMonth = (monthStr: string) => {
     const [year, month] = monthStr.split("-");
     const date = new Date(Number.parseInt(year), Number.parseInt(month) - 1);
-    return date.toLocaleDateString("en-US", {
+    return date.toLocaleDateString(language === "nb" ? "nb-NO" : "en-US", {
       month: "short",
       year: "numeric",
     });
@@ -69,11 +73,10 @@ export function ConsultantDashboard({
       {/* Header */}
       <header className="space-y-2">
         <h1 className="text-4xl font-bold tracking-tight">
-          Welcome back, {displayName}
+          {t.dashboard.welcome.replace("{name}", displayName)}
         </h1>
         <p className="text-lg text-muted-foreground">
-          Keep your profile up to date and mark availability to get staffed
-          faster.
+          {t.dashboard.subtitle}
         </p>
       </header>
 
@@ -88,12 +91,12 @@ export function ConsultantDashboard({
               </div>
               <div className="space-y-1">
                 <div className="font-semibold text-lg">
-                  Profile Completeness
+                  {t.dashboard.completeness}
                 </div>
                 <div className="text-sm text-muted-foreground">
                   {pct === 100
-                    ? "Your profile is complete! Great job."
-                    : "Fill in bio, title and skills to reach 100%"}
+                    ? t.dashboard.complete
+                    : t.dashboard.incomplete}
                 </div>
               </div>
             </div>
@@ -108,8 +111,8 @@ export function ConsultantDashboard({
           <div className="space-y-2">
             <Progress value={pct} className="h-2.5" />
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Profile strength</span>
-              <span>{pct < 100 ? `${100 - pct}% remaining` : "Complete"}</span>
+              <span>{t.dashboard.strength}</span>
+              <span>{pct < 100 ? t.dashboard.remaining.replace("{pct}", String(100 - pct)) : "Complete"}</span>
             </div>
           </div>
 
@@ -120,7 +123,7 @@ export function ConsultantDashboard({
           >
             <Link href="/dashboard/profile">
               <User className="h-4 w-4 mr-2" />
-              Edit My Profile
+              {t.dashboard.editProfile}
             </Link>
           </Button>
         </div>
@@ -133,9 +136,9 @@ export function ConsultantDashboard({
             <Calendar className="h-5 w-5 text-blue-600" />
           </div>
           <div>
-            <div className="font-semibold text-lg">My Availability</div>
+            <div className="font-semibold text-lg">{t.dashboard.availability}</div>
             <div className="text-sm text-muted-foreground">
-              Upcoming months capacity overview
+              {t.dashboard.availabilitySubtitle}
             </div>
           </div>
         </div>
@@ -155,23 +158,23 @@ export function ConsultantDashboard({
                       variant={utilization > 80 ? "default" : "secondary"}
                       className="text-xs"
                     >
-                      {utilization}% utilized
+                      {utilization}% {t.profile.availability.utilization.toLowerCase()}
                     </Badge>
                   </div>
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Available</span>
+                      <span className="text-muted-foreground">{t.profile.availability.available}</span>
                       <span className="font-medium">{a.hours_available}h</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Committed</span>
+                      <span className="text-muted-foreground">{t.profile.availability.committed}</span>
                       <span className="font-medium text-blue-600">
                         {a.hours_committed}h
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Free</span>
+                      <span className="text-muted-foreground">{t.profile.availability.remaining}</span>
                       <span className="font-medium text-green-600">
                         {a.hours_free}h
                       </span>
@@ -189,8 +192,7 @@ export function ConsultantDashboard({
               <Clock className="h-6 w-6 text-muted-foreground" />
             </div>
             <div className="text-sm text-muted-foreground">
-              No availability set yet. Update your calendar to get matched with
-              projects.
+              {t.dashboard.noAvailability ?? "No availability set yet. Update your calendar to get matched with projects."}
             </div>
           </div>
         )}
@@ -203,7 +205,7 @@ export function ConsultantDashboard({
           >
             <Link href="/dashboard/profile#availability">
               <Calendar className="h-4 w-4 mr-2" />
-              Update Availability
+              {t.dashboard.editProfile.replace("Profile", "Availability") || "Update Availability"}
             </Link>
           </Button>
         </div>
@@ -216,10 +218,11 @@ export function ConsultantDashboard({
             <Briefcase className="h-5 w-5 text-purple-600" />
           </div>
           <div>
-            <div className="font-semibold text-lg">My Active Projects</div>
+            <div className="font-semibold text-lg">{t.dashboard.activeProjects}</div>
             <div className="text-sm text-muted-foreground">
-              {activeProjects.length}{" "}
-              {activeProjects.length === 1 ? "project" : "projects"} in progress
+              {t.dashboard.activeProjectsSubtitle
+                .replace("{count}", String(activeProjects.length))
+                .replace("{project}", activeProjects.length === 1 ? "project" : "projects")}
             </div>
           </div>
         </div>
@@ -239,7 +242,7 @@ export function ConsultantDashboard({
                         {p.name}
                       </div>
                       <Badge variant="secondary" className="text-xs">
-                        Active
+                        {t.projects.status.active}
                       </Badge>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -263,7 +266,7 @@ export function ConsultantDashboard({
               <Briefcase className="h-6 w-6 text-muted-foreground" />
             </div>
             <div className="text-sm text-muted-foreground">
-              No active projects right now. Check out opportunities below!
+              {t.dashboard.noActiveProjects}
             </div>
           </div>
         )}
@@ -277,10 +280,10 @@ export function ConsultantDashboard({
           </div>
           <div>
             <div className="font-semibold text-lg">
-              Opportunities You Might Like
+              {t.dashboard.opportunities}
             </div>
             <div className="text-sm text-muted-foreground">
-              Projects matching your skills and availability
+              {t.dashboard.opportunitiesSubtitle}
             </div>
           </div>
         </div>
@@ -313,7 +316,7 @@ export function ConsultantDashboard({
               <TrendingUp className="h-6 w-6 text-muted-foreground" />
             </div>
             <div className="text-sm text-muted-foreground">
-              No open projects to show at the moment. Check back soon!
+              {t.dashboard.noOpportunities}
             </div>
           </div>
         )}
@@ -329,16 +332,16 @@ export function ConsultantDashboard({
             <div className="flex-1 space-y-3">
               <div>
                 <div className="font-semibold text-lg">
-                  My Department — {primaryDepartmentName}
+                  {t.dashboard.department.replace("{name}", primaryDepartmentName)}
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  Browse colleagues and their availability
+                  {t.dashboard.departmentSubtitle}
                 </div>
               </div>
               <Button asChild variant="outline">
                 <Link href="/dashboard/consultants">
                   <Users className="h-4 w-4 mr-2" />
-                  Browse Colleagues
+                  {t.dashboard.browseColleagues}
                 </Link>
               </Button>
             </div>

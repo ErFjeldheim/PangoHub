@@ -69,7 +69,29 @@ export async function getConsultantHomeData() {
 
   const pb = await createServerClient();
 
-  const completenessPct = 50; 
+  let score = 0;
+  
+  if (profile) {
+      if (profile.first_name && profile.last_name) score += 20;
+      if (profile.title) score += 15;
+      if (profile.bio) score += 15;
+      if (profile.location) score += 10;
+      if (profile.phone || profile.linkedin_url || profile.github_url || profile.portfolio_url) {
+          score += 10;
+      }
+  }
+
+  const [skillsCount, expCount, eduCount] = await Promise.all([
+      pb.collection("profile_skills").getList(1, 1, { filter: `user="${user.id}"` }),
+      pb.collection("experiences").getList(1, 1, { filter: `user="${user.id}"` }),
+      pb.collection("educations").getList(1, 1, { filter: `user="${user.id}"` }),
+  ]);
+
+  if (skillsCount.totalItems > 0) score += 10;
+  if (expCount.totalItems > 0) score += 10;
+  if (eduCount.totalItems > 0) score += 10;
+
+  const completenessPct = Math.min(100, score); 
 
   const availabilityRows = await getAvailabilityForWindow(user.id, 6);
   const availability: AvailabilityItem[] = toAvailabilityItems(availabilityRows);
