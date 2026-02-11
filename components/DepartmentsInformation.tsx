@@ -17,7 +17,7 @@ export default async function DepartmentsInformation() {
         <div className="flex items-end justify-between">
           <h2 className="text-2xl font-bold tracking-tight">Departments</h2>
         </div>
-        <div className="rounded-xl border p-6 text-sm text-muted-foreground">
+        <div className="rounded-xl border p-6 text-sm text-muted-foreground bg-card shadow-sm">
           No departments to show yet.
         </div>
       </section>

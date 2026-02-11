@@ -39,9 +39,11 @@ const DepartmentProjectList: FC<DepartmentProjectListProps> = ({
 }) => {
   if (!projects?.length) {
     return (
-      <p className="text-muted-foreground">
-        No projects found for this department.
-      </p>
+      <div className="rounded-xl border bg-card p-6 text-center shadow-sm">
+        <p className="text-muted-foreground">
+          No projects found for this department.
+        </p>
+      </div>
     );
   }
 

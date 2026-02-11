@@ -35,7 +35,7 @@ export default function DepartmentAvailabilityTrend({
         <CardHeader>
           <CardTitle>Availability trend — {departmentName}</CardTitle>
         </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
+        <CardContent className="text-sm text-muted-foreground bg-card rounded-b-xl">
           No availability data found for the upcoming months.
         </CardContent>
       </Card>
