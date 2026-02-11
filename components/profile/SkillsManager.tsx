@@ -20,6 +20,7 @@ import {
   type Skill,
   type ProfileSkill,
 } from "@/app/actions/skills";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 interface SkillsManagerProps {
   profileId: string;
@@ -31,6 +32,7 @@ export function SkillsManager({ profileId }: SkillsManagerProps) {
   const [newSkill, setNewSkill] = useState("");
   const [inputError, setInputError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { t } = useLanguage();
 
   const [isPending, startTransition] = useTransition();
   const [adding, setAdding] = useState(false);
@@ -225,17 +227,17 @@ export function SkillsManager({ profileId }: SkillsManagerProps) {
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-green-500 to-teal-500 text-white">
             <Sparkles className="h-5 w-5" />
           </div>
-          <CardTitle className="text-xl">Skills & Expertise</CardTitle>
+          <CardTitle className="text-xl">{t.profile.professional.skills}</CardTitle>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-3">
-          <Label className="text-sm font-medium">Add a skill</Label>
+          <Label className="text-sm font-medium">{t.profile.professional.addSkill}</Label>
           <div className="flex gap-2">
             <div className="relative flex-1">
               <Input
                 className="h-11"
-                placeholder="Search or create a skill..."
+                placeholder={t.common.search}
                 value={newSkill}
                 onChange={(e) => {
                   setNewSkill(e.target.value);
@@ -306,7 +308,7 @@ export function SkillsManager({ profileId }: SkillsManagerProps) {
         </div>
 
         <div>
-          <Label className="text-sm font-medium mb-3 block">Your Skills</Label>
+          <Label className="text-sm font-medium mb-3 block">{t.profile.professional.yourSkills}</Label>
           <div className="flex flex-wrap gap-2">
             {profileSkills.map((ps) => (
               <Badge
@@ -337,7 +339,7 @@ export function SkillsManager({ profileId }: SkillsManagerProps) {
               <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
                 <Sparkles className="h-4 w-4" />
                 <span>
-                  No skills added yet. Start by adding your expertise above.
+                  {t.profile.professional.noSkills}
                 </span>
               </div>
             )}
@@ -348,7 +350,7 @@ export function SkillsManager({ profileId }: SkillsManagerProps) {
           <div className="space-y-3">
             <Label className="text-sm font-medium flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
-              Adjust Proficiency Levels
+              {t.profile.professional.adjustProficiency}
             </Label>
             <div className="space-y-4">
               {profileSkills.map((ps) => (

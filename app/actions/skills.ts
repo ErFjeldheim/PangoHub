@@ -1,6 +1,7 @@
 "use server";
 
 import { createServerClient } from "@/lib/pocketbase-server";
+import { createAdminClient } from "@/lib/pocketbase-admin";
 import type { Skill as PBSkill, ProfileSkill as PBProfileSkill } from "@/types/pocketbase";
 
 export interface SkillPublic {
@@ -125,15 +126,38 @@ export async function updateProfileSkillProficiency(params: {
 }
 
 export async function createSkill(name: string): Promise<SkillPublic> {
-  const pb = await createServerClient();
+  const pb = await createAdminClient();
   const trimmed = name.trim();
   if (!trimmed) throw new Error("Skill name is required");
+
+  // Check if it already exists (case-insensitive search)
+  try {
+    const existing = await pb.collection("skills").getFirstListItem<PBSkill>(`name~"${trimmed}"`);
+    // Check for exact match (case-insensitive) to avoid returning "React Native" when searching for "React"
+    if (existing.name.toLowerCase() === trimmed.toLowerCase()) {
+      return { id: existing.id, name: existing.name };
+    }
+  } catch {
+    // Not found, proceed to create
+  }
 
   try {
       const record = await pb.collection("skills").create<PBSkill>({ name: trimmed });
       return { id: record.id, name: record.name };
   } catch (err) {
-      const e = err as Error;
-      throw new Error(e.message);
+      // If it failed but it was a unique constraint error (race condition), try to fetch it again
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const e = err as any;
+      if (e?.data?.data?.name?.message?.includes("unique")) {
+         try {
+            const existing = await pb.collection("skills").getFirstListItem<PBSkill>(`name="${trimmed}"`);
+            return { id: existing.id, name: existing.name };
+         } catch {
+            throw new Error("Failed to create skill: " + e.message);
+         }
+      }
+      
+      console.error("createSkill error:", e);
+      throw new Error(e.message || "Failed to create skill");
   }
 }
