@@ -42,7 +42,11 @@ export async function middleware(request: NextRequest) {
   }
 
   if (isAuthPage && pb.authStore.isValid) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    const isSignupWithToken = request.nextUrl.pathname === '/auth/signup' && request.nextUrl.searchParams.has('token');
+    
+    if (!isSignupWithToken) {
+        return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
   }
 
   return response;

@@ -12,7 +12,7 @@ export function SubmitButton({ children }: { children: React.ReactNode }) {
     <Button
       type="submit"
       disabled={pending}
-      className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-md hover:shadow-lg transition-all duration-200"
+      className="bg-accent hover:bg-accent/90 text-accent-foreground dark:bg-secondary dark:text-secondary-foreground dark:hover:bg-secondary/90 shadow-md hover:shadow-lg transition-all duration-200"
       size="lg"
     >
       {pending ? (
