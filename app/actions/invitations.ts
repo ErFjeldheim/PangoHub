@@ -1,8 +1,10 @@
 "use server";
 
 import { createServerClient } from "@/lib/pocketbase-server";
+import { createAdminClient } from "@/lib/pocketbase-admin";
 import { createHash } from "crypto";
 import { Invitation, User } from "@/types/pocketbase";
+import { sendInvitationEmail, sendWelcomeEmail } from "@/lib/mail";
 
 export async function createInvitation(
   email: string,
@@ -41,6 +43,16 @@ export async function createInvitation(
     `/auth/signup?token=${encodeURIComponent(token)}` +
     `&email=${encodeURIComponent(cleanEmail)}`;
 
+  try {
+    await sendInvitationEmail({
+      to: cleanEmail,
+      inviteUrl,
+      role,
+    });
+  } catch (error) {
+    console.error("Failed to send invitation email:", error);
+  }
+
   return { inviteUrl };
 }
 
@@ -78,15 +90,19 @@ export async function deleteInvitation(id: string) {
 }
 
 export async function verifyInvitation(token: string, email: string) {
-  const pb = await createServerClient();
+  const pb = await createAdminClient();
   const tokenHash = createHash("sha256").update(token).digest("hex");
   
+  // Clean email to handle any potential URL encoding weirdness if it passed through
+  const cleanEmail = decodeURIComponent(email).trim();
+
   try {
       const invitation = await pb.collection("invitations").getFirstListItem<Invitation>(
-          `email="${email}" && token_hash="${tokenHash}" && accepted_at="" && expires_at > @now`
+          `email="${cleanEmail}" && token_hash="${tokenHash}" && accepted_at="" && expires_at > @now`
       );
       return { invitation };
-  } catch {
+  } catch (e) {
+      console.error("verifyInvitation error:", e);
       return { error: { message: "Invalid or expired invitation" } };
   }
 }
@@ -102,14 +118,17 @@ export async function signUpWithInvitation(formData: FormData) {
 
   if (!token) return { error: { message: "Invalid invitation token" } };
 
-  const { invitation, error } = await verifyInvitation(token, email);
-  if (error || !invitation) {
+  const { invitation, error: inviteError } = await verifyInvitation(token, email);
+  if (inviteError || !invitation) {
       return { error: { message: "Invalid or expired invitation" } };
   }
 
+  // Use admin client to create user to bypass permission issues (especially for verified: true)
+  const adminPb = await createAdminClient();
+
   let user: User;
   try {
-      user = await pb.collection("users").create<User>({
+      user = await adminPb.collection("users").create<User>({
           email,
           password,
           passwordConfirm: password,
@@ -120,18 +139,38 @@ export async function signUpWithInvitation(formData: FormData) {
           verified: true
       });
   } catch (err) {
-      const e = err as Error;
-      return { error: { message: e.message || "Signup failed" } };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const e = err as any;
+      console.error("Signup error details:", JSON.stringify(e?.data || e, null, 2));
+      
+      // Check for email collision
+      if (e?.data?.data?.email?.message) {
+          return { error: { message: `Email error: ${e.data.data.email.message}` } };
+      }
+      
+      return { error: { message: e.message || "Signup failed. Please try again or contact support." } };
   }
 
   try {
-      await pb.collection("invitations").update(invitation.id, {
+      // Use Admin Client to mark as accepted
+      await adminPb.collection("invitations").update(invitation.id, {
           accepted_at: new Date().toISOString()
       });
+
+      try {
+        await sendWelcomeEmail({
+          to: email,
+          name: firstName || "User",
+        });
+      } catch (err) {
+        console.error("Failed to send welcome email:", err);
+      }
+
   } catch (err) {
       const e = err as Error;
       console.error("accept invitation error:", e);
-      return { error: { message: "Account created, but invite acceptance failed." } };
+      // We don't fail the whole signup if the update fails, but we should log it.
+      // Ideally, transaction should be used but PocketBase doesn't expose it easily here.
   }
 
   return { user };

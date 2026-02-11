@@ -4,6 +4,7 @@
 import { createServerClient } from "@/lib/pocketbase-server";
 import { createInvitation } from "@/app/actions/invitations";
 import type { AccessRequest as PBAccessRequest } from "@/types/pocketbase";
+import { sendRejectionEmail } from "@/lib/mail";
 
 export type AccessRequest = {
   id: string;
@@ -104,12 +105,30 @@ export async function approveAccessRequest(
 export async function rejectAccessRequest(id: string) {
   const pb = await createServerClient();
 
+  let req: PBAccessRequest;
+  try {
+      req = await pb.collection("access_requests").getOne<PBAccessRequest>(id);
+  } catch {
+      throw new Error("Request not found.");
+  }
+
   try {
       await pb.collection("access_requests").update(id, {
           status: "rejected",
           decided_at: new Date().toISOString(),
           decided_by: pb.authStore.record?.id
       });
+
+      // Send rejection email (fire and forget)
+      try {
+        await sendRejectionEmail({
+          to: req.email,
+          name: req.name
+        });
+      } catch (err) {
+        console.error("Failed to send rejection email:", err);
+      }
+
   } catch (e) {
       console.error("rejectAccessRequest error:", e);
       throw new Error("Failed to reject request.");

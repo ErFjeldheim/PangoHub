@@ -3,6 +3,7 @@
 
 import { createServerClient } from "@/lib/pocketbase-server";
 import type { Invitation } from "@/types/pocketbase";
+import { sendWelcomeEmail } from "@/lib/mail";
 
 export async function signupWithInvite(opts: {
   email: string;
@@ -40,6 +41,15 @@ export async function signupWithInvite(opts: {
     await pb.collection('invitations').update(invite.id, {
         accepted_at: new Date().toISOString(),
     });
+
+    try {
+      await sendWelcomeEmail({
+        to: email,
+        name: opts.first_name || "User",
+      });
+    } catch (err) {
+      console.error("Failed to send welcome email:", err);
+    }
 
   } catch (err) {
     const e = err as Error;
