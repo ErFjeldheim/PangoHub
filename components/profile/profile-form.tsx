@@ -1,6 +1,8 @@
+"use client";
+
 import { updateMyProfileAction } from "@/app/actions/profile";
-import { AvailabilitySection } from "@/components/availability/AvailabilitySection";
 import { SubmitButton } from "@/components/profile/SubmitButton";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 import {
   Card,
@@ -31,23 +33,29 @@ import { SkillsManager } from "./SkillsManager";
 import { ExperienceManager } from "./ExperienceManager";
 import { EducationManager } from "./EducationManager";
 import { CurrentProfile } from "@/types/profile";
+import { Experience, Education } from "@/types/pocketbase";
 
 interface ProfileFormProps {
   profile: CurrentProfile;
+  availabilityContent: React.ReactNode;
+  initialExperiences: Experience[];
+  initialEducations: Education[];
 }
 
 /**
  * Server component: renders client children where needed.
  * No "use client" here — this keeps the tree server-first.
  */
-export function ProfileForm({ profile }: ProfileFormProps) {
+export function ProfileForm({ profile, availabilityContent, initialExperiences, initialEducations }: ProfileFormProps) {
+  const { t } = useLanguage();
+
   return (
     <div className="space-y-6">
       <Tabs defaultValue="basic" className="w-full">
         <TabsList className="grid w-full grid-cols-3 h-auto p-1">
           <TabsTrigger value="basic" className="flex items-center gap-2 py-3">
             <User className="w-4 h-4" />
-            <span className="hidden sm:inline">Basic & Contact</span>
+            <span className="hidden sm:inline">{t.profile.tabs.basic}</span>
             <span className="sm:hidden">Basic</span>
           </TabsTrigger>
           <TabsTrigger
@@ -55,7 +63,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
             className="flex items-center gap-2 py-3"
           >
             <Briefcase className="w-4 h-4" />
-            <span className="hidden sm:inline">Professional</span>
+            <span className="hidden sm:inline">{t.profile.tabs.professional}</span>
             <span className="sm:hidden">Work</span>
           </TabsTrigger>
           <TabsTrigger
@@ -63,7 +71,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
             className="flex items-center gap-2 py-3"
           >
             <Calendar className="w-4 h-4" />
-            <span className="hidden sm:inline">Availability</span>
+            <span className="hidden sm:inline">{t.profile.tabs.availability}</span>
             <span className="sm:hidden">Hours</span>
           </TabsTrigger>
         </TabsList>
@@ -78,9 +86,9 @@ export function ProfileForm({ profile }: ProfileFormProps) {
                     <User className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                   </div>
                   <div>
-                    <CardTitle className="text-xl">Basic Information</CardTitle>
+                    <CardTitle className="text-xl">{t.profile.basic.title}</CardTitle>
                     <CardDescription>
-                      Your personal and contact details
+                      {t.profile.basic.desc}
                     </CardDescription>
                   </div>
                 </div>
@@ -93,7 +101,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
                       className="flex items-center gap-2 text-sm font-medium"
                     >
                       <User className="w-4 h-4 text-muted-foreground" />
-                      First Name
+                      {t.profile.basic.firstName}
                     </Label>
                     <Input
                       id="first_name"
@@ -110,7 +118,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
                       className="flex items-center gap-2 text-sm font-medium"
                     >
                       <User className="w-4 h-4 text-muted-foreground" />
-                      Last Name
+                      {t.profile.basic.lastName}
                     </Label>
                     <Input
                       id="last_name"
@@ -129,7 +137,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
                     className="flex items-center gap-2 text-sm font-medium"
                   >
                     <Briefcase className="w-4 h-4 text-muted-foreground" />
-                    Job Title
+                    {t.profile.basic.jobTitle}
                   </Label>
                   <Input
                     id="title"
@@ -146,19 +154,18 @@ export function ProfileForm({ profile }: ProfileFormProps) {
                     className="flex items-center gap-2 text-sm font-medium"
                   >
                     <FileText className="w-4 h-4 text-muted-foreground" />
-                    Bio
+                    {t.profile.basic.bio}
                   </Label>
                   <Textarea
                     id="bio"
                     name="bio"
-                    placeholder="Tell us about yourself, your expertise, and what you're passionate about..."
+                    placeholder={t.profile.basic.bioPlaceholder}
                     defaultValue={profile.bio ?? ""}
                     rows={5}
                     className="resize-none"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Share your background, skills, and what makes you unique as
-                    a consultant.
+                    {t.profile.basic.bioHint}
                   </p>
                 </div>
               </CardContent>
@@ -172,9 +179,9 @@ export function ProfileForm({ profile }: ProfileFormProps) {
                   </div>
                   <div>
                     <CardTitle className="text-xl">
-                      Contact Information
+                      {t.profile.contact.title}
                     </CardTitle>
-                    <CardDescription>How people can reach you</CardDescription>
+                    <CardDescription>{t.profile.contact.desc}</CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -186,7 +193,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
                       className="flex items-center gap-2 text-sm font-medium"
                     >
                       <Phone className="w-4 h-4 text-muted-foreground" />
-                      Phone
+                      {t.profile.contact.phone}
                     </Label>
                     <Input
                       id="phone"
@@ -203,7 +210,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
                       className="flex items-center gap-2 text-sm font-medium"
                     >
                       <MapPin className="w-4 h-4 text-muted-foreground" />
-                      Location
+                      {t.profile.contact.location}
                     </Label>
                     <Input
                       id="location"
@@ -222,7 +229,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
                       className="flex items-center gap-2 text-sm font-medium"
                     >
                       <Linkedin className="w-4 h-4 text-muted-foreground" />
-                      LinkedIn URL
+                      {t.profile.contact.linkedin}
                     </Label>
                     <Input
                       id="linkedin_url"
@@ -240,7 +247,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
                       className="flex items-center gap-2 text-sm font-medium"
                     >
                       <Github className="w-4 h-4 text-muted-foreground" />
-                      GitHub URL
+                      {t.profile.contact.github}
                     </Label>
                     <Input
                       id="github_url"
@@ -258,7 +265,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
                       className="flex items-center gap-2 text-sm font-medium"
                     >
                       <Globe className="w-4 h-4 text-muted-foreground" />
-                      Portfolio URL
+                      {t.profile.contact.portfolio}
                     </Label>
                     <Input
                       id="portfolio_url"
@@ -274,7 +281,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
             </Card>
 
             <div className="flex justify-end">
-              <SubmitButton>Save Basic Info</SubmitButton>
+              <SubmitButton>{t.common.save}</SubmitButton>
             </div>
           </form>
         </TabsContent>
@@ -289,10 +296,10 @@ export function ProfileForm({ profile }: ProfileFormProps) {
                 </div>
                 <div>
                   <CardTitle className="text-xl">
-                    Professional Information
+                    {t.profile.professional.title}
                   </CardTitle>
                   <CardDescription>
-                    Your skills, experience, and education
+                    {t.profile.professional.desc}
                   </CardDescription>
                 </div>
               </div>
@@ -301,7 +308,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
               <div className="space-y-4">
                 <div className="flex items-center gap-2 pb-2 border-b">
                   <div className="w-1 h-6 bg-accent rounded-full" />
-                  <h3 className="text-lg font-semibold">Skills</h3>
+                  <h3 className="text-lg font-semibold">{t.profile.professional.skills}</h3>
                 </div>
                 <SkillsManager profileId={profile.id} />
               </div>
@@ -309,17 +316,17 @@ export function ProfileForm({ profile }: ProfileFormProps) {
               <div className="space-y-4">
                 <div className="flex items-center gap-2 pb-2 border-b">
                   <div className="w-1 h-6 bg-accent rounded-full" />
-                  <h3 className="text-lg font-semibold">Work Experience</h3>
+                  <h3 className="text-lg font-semibold">{t.profile.professional.workExperience}</h3>
                 </div>
-                <ExperienceManager profileId={profile.id} />
+                <ExperienceManager profileId={profile.id} initialExperiences={initialExperiences} />
               </div>
 
               <div className="space-y-4">
                 <div className="flex items-center gap-2 pb-2 border-b">
                   <div className="w-1 h-6 bg-accent rounded-full" />
-                  <h3 className="text-lg font-semibold">Education</h3>
+                  <h3 className="text-lg font-semibold">{t.profile.professional.education}</h3>
                 </div>
-                <EducationManager profileId={profile.id} />
+                <EducationManager profileId={profile.id} initialEducations={initialEducations} />
               </div>
             </CardContent>
           </Card>
@@ -327,7 +334,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
 
         {/* AVAILABILITY (server wrapper + client inner) */}
         <TabsContent value="availability" className="space-y-6 mt-6">
-          <AvailabilitySection profileId={profile.id} />
+          {availabilityContent}
         </TabsContent>
       </Tabs>
     </div>
