@@ -26,39 +26,24 @@ import {
 } from "lucide-react";
 import { Education } from "@/types/pocketbase";
 
+import {
+  createEducation,
+  updateEducation,
+  deleteEducation,
+} from "@/app/actions/profile";
+
 interface EducationProps {
   profileId: string;
+  initialEducations: Education[];
 }
 
-export function EducationManager({ profileId }: EducationProps) {
-  const pb = createClient();
-  const [educations, setEducations] = useState<Education[]>([]);
+export function EducationManager({ profileId, initialEducations }: EducationProps) {
+  const [educations, setEducations] = useState<Education[]>(initialEducations);
   const [isEditing, setIsEditing] = useState(false);
   const [currentEducation, setCurrentEducation] = useState<Partial<Education> | null>(
     null
   );
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchEducations() {
-      setIsLoading(true);
-      try {
-          const records = await pb.collection("educations").getFullList<Education>({
-              filter: `user="${profileId}"`,
-              sort: '-end_year'
-          });
-          setEducations(records);
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } catch (error: any) {
-        if (error.isAbort) return;
-        console.error("Error fetching educations:", error);
-        toast.error("Failed to fetch educations");
-      }
-      setIsLoading(false);
-    }
-
-    fetchEducations();
-  }, [profileId, pb]);
+  const isLoading = false;
 
   const handleAddNew = () => {
     setCurrentEducation({
@@ -75,7 +60,7 @@ export function EducationManager({ profileId }: EducationProps) {
 
   const handleDelete = async (educationId: string) => {
     try {
-        await pb.collection("educations").delete(educationId);
+        await deleteEducation(educationId);
         setEducations(educations.filter((edu) => edu.id !== educationId));
         toast.success("Education deleted");
     } catch (error) {
@@ -88,25 +73,29 @@ export function EducationManager({ profileId }: EducationProps) {
 
     try {
         let record: Education;
-        const payload = {
-            ...currentEducation,
+        const sanitizedPayload: Partial<Education> = {
+            institution: currentEducation.institution,
+            degree_level: currentEducation.degree_level,
+            program: currentEducation.program,
+            start_year: currentEducation.start_year || undefined,
+            end_year: currentEducation.end_year || undefined,
             user: profileId
         };
 
         if (currentEducation.id) {
-            record = await pb.collection("educations").update(currentEducation.id, payload);
+            record = await updateEducation(currentEducation.id, sanitizedPayload);
             setEducations(educations.map((edu) => (edu.id === record.id ? record : edu)));
         } else {
-            record = await pb.collection("educations").create(payload);
+            record = await createEducation(sanitizedPayload);
             setEducations([record, ...educations]);
         }
         
         toast.success("Education saved");
         setIsEditing(false);
         setCurrentEducation(null);
-    } catch (error) {
-      toast.error("Failed to save education");
+    } catch (error: any) {
       console.error("Error saving education:", error);
+      toast.error("Failed to save education: " + (error.message || "Unknown error"));
     }
   };
 

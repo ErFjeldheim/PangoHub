@@ -27,39 +27,28 @@ import {
 } from "lucide-react";
 import { Experience } from "@/types/pocketbase";
 
+import {
+  createExperience,
+  updateExperience,
+  deleteExperience,
+} from "@/app/actions/profile";
+
+import { useLanguage } from "@/lib/i18n/LanguageContext";
+
 interface ExperienceProps {
   profileId: string;
+  initialExperiences: Experience[];
 }
 
-export function ExperienceManager({ profileId }: ExperienceProps) {
-  const pb = createClient();
-  const [experiences, setExperiences] = useState<Experience[]>([]);
+export function ExperienceManager({ profileId, initialExperiences }: ExperienceProps) {
+  const { t } = useLanguage();
+  const [experiences, setExperiences] = useState<Experience[]>(initialExperiences);
   const [isEditing, setIsEditing] = useState(false);
   const [currentExperience, setCurrentExperience] = useState<Partial<Experience> | null>(
     null
   );
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchExperiences() {
-      setIsLoading(true);
-      try {
-          const records = await pb.collection("experiences").getFullList<Experience>({
-              filter: `user="${profileId}"`,
-              sort: '-start_date'
-          });
-          setExperiences(records);
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } catch (error: any) {
-        if (error.isAbort) return;
-        console.error("Error fetching experiences:", error);
-        toast.error("Failed to fetch experiences");
-      }
-      setIsLoading(false);
-    }
-
-    fetchExperiences();
-  }, [profileId, pb]);
+  
+  const isLoading = false;
 
   const handleAddNew = () => {
     setCurrentExperience({
@@ -78,7 +67,7 @@ export function ExperienceManager({ profileId }: ExperienceProps) {
 
   const handleDelete = async (experienceId: string) => {
     try {
-        await pb.collection("experiences").delete(experienceId);
+        await deleteExperience(experienceId);
         setExperiences(experiences.filter((exp) => exp.id !== experienceId));
         toast.success("Experience deleted");
     } catch (error) {
@@ -91,25 +80,46 @@ export function ExperienceManager({ profileId }: ExperienceProps) {
 
     try {
         let record: Experience;
-        const payload = {
-            ...currentExperience,
-            user: profileId
+        
+        // Sanitize payload: remove empty strings for dates
+        const sanitizedPayload: Partial<Experience> = {
+            org: currentExperience.org,
+            role: currentExperience.role,
+            description: currentExperience.description,
+            type: currentExperience.type,
+            user: profileId,
+            start_date: currentExperience.start_date || undefined,
+            end_date: currentExperience.end_date || undefined,
         };
 
+        if (!currentExperience.id && !sanitizedPayload.start_date) {
+             toast.error("Start date is required");
+             return;
+        }
+
+        console.log("Saving experience payload:", sanitizedPayload);
+
         if (currentExperience.id) {
-            record = await pb.collection("experiences").update(currentExperience.id, payload);
+            record = await updateExperience(currentExperience.id, sanitizedPayload);
             setExperiences(experiences.map((exp) => (exp.id === record.id ? record : exp)));
         } else {
-            record = await pb.collection("experiences").create(payload);
+            record = await createExperience(sanitizedPayload);
             setExperiences([record, ...experiences]);
         }
 
         toast.success("Experience saved");
         setIsEditing(false);
         setCurrentExperience(null);
-    } catch (error) {
-      toast.error("Failed to save experience");
+    } catch (error: any) {
       console.error("Error saving experience:", error);
+      
+      const validationErrors = error?.data?.data;
+      if (validationErrors) {
+          const messages = Object.keys(validationErrors).map(key => `${key}: ${validationErrors[key].message}`).join(', ');
+          toast.error(`Validation failed: ${messages}`);
+      } else {
+          toast.error("Failed to save experience: " + (error.message || "Unknown error"));
+      }
     }
   };
 
@@ -121,6 +131,7 @@ export function ExperienceManager({ profileId }: ExperienceProps) {
   const getTypeBadgeColor = (type: string) => {
     const colors = {
       job: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+      part_time: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400",
       contract:
         "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
       volunteer:
@@ -237,18 +248,18 @@ export function ExperienceManager({ profileId }: ExperienceProps) {
             <Select
               value={currentExperience.type}
               onValueChange={(
-                value: "job" | "contract" | "volunteer" | "education" | "other"
+                value: "job" | "part_time" | "contract" | "volunteer" | "other"
               ) => setCurrentExperience({ ...currentExperience, type: value })}
             >
               <SelectTrigger className="h-11">
                 <SelectValue placeholder="Select type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="job">Full-time Job</SelectItem>
-                <SelectItem value="contract">Contract</SelectItem>
-                <SelectItem value="volunteer">Volunteer</SelectItem>
-                <SelectItem value="education">Education</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
+                <SelectItem value="job">{t.profile.professional.experienceType.job}</SelectItem>
+                <SelectItem value="part_time">{t.profile.professional.experienceType.part_time}</SelectItem>
+                <SelectItem value="contract">{t.profile.professional.experienceType.contract}</SelectItem>
+                <SelectItem value="volunteer">{t.profile.professional.experienceType.volunteer}</SelectItem>
+                <SelectItem value="other">{t.profile.professional.experienceType.other}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -348,7 +359,7 @@ export function ExperienceManager({ profileId }: ExperienceProps) {
                       exp.type || 'other'
                     )}`}
                   >
-                    {exp.type ? exp.type.charAt(0).toUpperCase() + exp.type.slice(1) : 'Other'}
+                    {(t.profile.professional.experienceType as any)[exp.type || 'other']}
                   </span>
                 </div>
 
