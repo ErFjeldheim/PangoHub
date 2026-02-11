@@ -1,99 +1,107 @@
-# Talent Hub
+# PangoHub
 
-Talent Hub is a comprehensive platform for managing consultants, projects, and departments. It provides a centralized system for tracking consultant availability, skills, and project assignments. The platform is designed to streamline the process of finding the right talent for projects and managing department resources effectively.
+![Next.js](https://img.shields.io/badge/Next.js-16.1-black?style=flat-square&logo=next.js&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=flat-square&logo=typescript&logoColor=white)
+![PocketBase](https://img.shields.io/badge/PocketBase-0.26-orange?style=flat-square&logo=pocketbase&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.0-38bdf8?style=flat-square&logo=tailwindcss&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61dafb?style=flat-square&logo=react&logoColor=black)
+![Status](https://img.shields.io/website?url=https%3A%2F%2Fpangohub.fjelldata.com&style=flat-square&label=PangoHub)
 
-## Tech Stack
+PangoHub (formerly Talent Hub) is a comprehensive platform for managing consultants, projects, and departments. It serves as a centralized system for tracking consultant availability, skills, and project assignments, designed to streamline resource management and talent matching.
 
-- **Framework**: [Next.js 16](https://nextjs.org/)
-- **Language**: [TypeScript](https://www.typescriptlang.org/)
-- **Database**: [PocketBase](https://pocketbase.io/)
-- **Authentication**: PocketBase Auth
-- **UI**: [React 19](https://reactjs.org/)
-- **Styling**: [Tailwind CSS 4](https://tailwindcss.com/)
-- **UI Components**: [Shadcn UI](https://ui.shadcn.com/)
-- **Linting**: [ESLint](https://eslint.org/)
+The application is currently hosted on **Dokploy** at [pangohub.fjelldata.com](https://pangohub.fjelldata.com).
 
-## Getting Started
+## ✨ Features
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
+-   **Consultant Management**: Detailed profiles with bio, skills, experience, and education.
+-   **Availability Tracking**: Monthly availability status (Available, Busy, Partly, Unavailable) and hour tracking.
+-   **Search & Filtering**: Real-time search for consultants by name, skills, or department.
+-   **Internationalization (i18n)**: Full support for Norwegian (Bokmål) and English.
+-   **Department Views**: Aggregated views for department resource planning.
+-   **Responsive UI**: Modern, accessible interface built with Shadcn UI and Tailwind CSS 4.
+
+## 🛠️ Tech Stack
+
+-   **Framework**: [Next.js 16](https://nextjs.org/) (App Router)
+-   **Language**: [TypeScript](https://www.typescriptlang.org/)
+-   **Database & Auth**: [PocketBase](https://pocketbase.io/)
+-   **UI Library**: [React 19](https://reactjs.org/)
+-   **Styling**: [Tailwind CSS 4](https://tailwindcss.com/)
+-   **Components**: [Shadcn UI](https://ui.shadcn.com/) (Radix Primitives)
+-   **Icons**: [Lucide React](https://lucide.dev/)
+-   **Deployment**: Docker / Nixpacks on [Dokploy](https://dokploy.com/)
+
+## 🚀 Getting Started
+
+Follow these instructions to get a local copy running for development.
 
 ### Prerequisites
 
-- Node.js (v20 or later)
-- npm, yarn, or pnpm
+-   Node.js (v20 or later)
+-   npm, yarn, or pnpm
 
 ### Installation
 
-1. **Clone the repository:**
+1.  **Clone the repository:**
 
-   ```bash
-   git clone https://github.com/your-username/talent-hub.git
-   cd talent-hub
-   ```
+    ```bash
+    git clone https://github.com/your-username/pangohub.git
+    cd pangohub
+    ```
 
-2. **Install dependencies:**
+2.  **Install dependencies:**
 
-   ```bash
-   npm install
-   # or
-   yarn install
-   # or
-   pnpm install
-   ```
+    ```bash
+    npm install
+    ```
 
-3. **Configuration:**
+3.  **Environment Configuration:**
 
-   The project is currently configured to connect to the remote PocketBase instance at `https://db.pangohub.fjelldata.com`.
-   
-   If you need to customize this, check `lib/pocketbase.ts` and `lib/pocketbase-server.ts`.
+    The project connects to a remote PocketBase instance. Ensure you have the correct credentials or environment variables if required (check `lib/pocketbase.ts` or `.env.example`).
 
-4. **Running the Application:**
+4.  **Run Development Server:**
 
-   To run the application in development mode:
+    ```bash
+    npm run dev
+    ```
 
-   ```bash
-   npm run dev
-   # or
-   yarn dev
-   # or
-   pnpm dev
-   ```
+    Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-   Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 📂 Project Structure
 
-## Project Structure
-
-The project follows a standard Next.js `app` directory structure.
-
-- `app/`: Contains all the routes, UI, and business logic.
-  - `actions/`: Server Actions for data mutations and fetching.
-  - `(auth)/`: Authentication-related pages (login, signup, etc.).
-  - `dashboard/`: The main dashboard layout and pages.
-  - `api/`: API routes.
-- `components/`: Shared React components.
-- `lib/`: Utility functions and libraries (including PocketBase client setup).
-- `types/`: TypeScript type definitions (including PocketBase schema types).
-- `public/`: Static assets.
-
-## Database
-
-The project uses PocketBase as the backend.
-
-- **Schema**: The database schema (collections, fields, API rules) is managed within PocketBase.
-- **Types**: TypeScript definitions for the database schema are located in `types/pocketbase.ts`.
-
-## Linting and Code Style
-
-The project uses ESLint for linting and code style enforcement.
-
-To run the linter:
-
-```bash
-npm run lint
+```
+├── app/                # Next.js App Router (pages & API)
+│   ├── actions/        # Server Actions (Data mutations/fetching)
+│   ├── (auth)/         # Authentication routes
+│   ├── dashboard/      # Main application routes
+│   └── api/            # API endpoints
+├── components/         # React components
+│   ├── ui/             # Shadcn UI primitives
+│   └── consultants/    # Feature-specific components
+├── lib/                # Utilities & Config
+│   ├── pocketbase.ts   # PocketBase client
+│   └── i18n/           # Translation context & strings
+├── types/              # TypeScript definitions
+└── public/             # Static assets
 ```
 
-## Deployment
+## 🗄️ Database
 
-The application is ready to be deployed on [Vercel](https://vercel.com/), the platform from the creators of Next.js.
+The project uses **PocketBase** for the backend (Database, Auth, Storage).
+Key collections include:
+-   `users`: Consultant profiles (extended from auth).
+-   `availability_months`: Monthly capacity and status tracking.
+-   `experiences`, `educations`, `profile_skills`: Related profile data.
+-   `departments`, `projects`: Organizational data.
 
-For more information, see the [Next.js deployment documentation](https://nextjs.org/docs/deployment).
+## 🚢 Deployment
+
+The application is deployed using **Dokploy** with **Nixpacks**.
+
+-   **Production URL**: [https://pangohub.fjelldata.com](https://pangohub.fjelldata.com)
+-   **Build Command**: `npm run build`
+-   **Start Command**: `npm start`
+
+## 📜 License
+
+Private repository. All rights reserved.
