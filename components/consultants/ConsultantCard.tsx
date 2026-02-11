@@ -13,8 +13,10 @@ import { Button } from "@/components/ui/button";
 import { ConsultantContactButtons } from "./ConsultantContactButtons";
 import { AvailabilityBadge } from "./AvailabilityBadge";
 import type { Consultant } from "@/types/consultant";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 export function ConsultantCard({ consultant }: { consultant: Consultant }) {
+  const { t } = useLanguage();
   const initials = `${consultant.first_name?.[0] ?? ""}${
     consultant.last_name?.[0] ?? ""
   }`;
@@ -34,7 +36,7 @@ export function ConsultantCard({ consultant }: { consultant: Consultant }) {
                 {consultant.first_name} {consultant.last_name}
               </CardTitle>
               <CardDescription className="text-sm">
-                {consultant.title || "Consultant"}
+                {consultant.title || t.consultants.consultantRole}
               </CardDescription>
             </div>
           </div>
@@ -71,7 +73,7 @@ export function ConsultantCard({ consultant }: { consultant: Consultant }) {
               size="sm"
               className="gap-1 group-hover:gap-2 transition-all"
             >
-              View Profile
+              {t.consultants.viewProfile}
               <ArrowRight className="h-3.5 w-3.5" />
             </Button>
           </Link>

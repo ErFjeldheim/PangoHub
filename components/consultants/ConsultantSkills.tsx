@@ -1,7 +1,10 @@
+"use client";
+
 // components/consultants/ConsultantSkills.tsx
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Sparkles } from "lucide-react";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 type DisplaySkill = {
   skills: { name: string }; // joined skill name
@@ -10,6 +13,8 @@ type DisplaySkill = {
 };
 
 export function ConsultantSkills({ skills }: { skills: DisplaySkill[] }) {
+  const { t } = useLanguage();
+
   return (
     <Card className="border-border/40 shadow-sm hover:shadow-md transition-shadow">
       <CardHeader className="pb-4">
@@ -17,7 +22,7 @@ export function ConsultantSkills({ skills }: { skills: DisplaySkill[] }) {
           <div className="p-2 rounded-lg bg-primary/10">
             <Sparkles className="h-4 w-4 text-primary" />
           </div>
-          <CardTitle className="text-xl">Skills &amp; Expertise</CardTitle>
+          <CardTitle className="text-xl">{t.consultantProfile.skillsTitle}</CardTitle>
         </div>
       </CardHeader>
       <CardContent>
@@ -40,7 +45,7 @@ export function ConsultantSkills({ skills }: { skills: DisplaySkill[] }) {
                   </span>
                 )}
                 {years !== null && (
-                  <span className="ml-1.5 text-xs opacity-70">{years}y</span>
+                  <span className="ml-1.5 text-xs opacity-70">{years}{t.consultantProfile.yearsShort}</span>
                 )}
               </Badge>
             );

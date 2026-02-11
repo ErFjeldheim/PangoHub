@@ -1,7 +1,10 @@
+"use client";
+
 // components/consultants/ConsultantContact.tsx
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Mail, Phone, MapPin, Linkedin, Github, Globe } from "lucide-react";
 import type { Consultant } from "@/types/consultant";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 type ContactableConsultant = Pick<
   Consultant,
@@ -28,6 +31,7 @@ export function ConsultantContact({
 }: {
   consultant: ContactableConsultant;
 }) {
+  const { t } = useLanguage();
   const linkedin = ensureUrl(consultant.linkedin_url);
   const github = ensureUrl(consultant.github_url);
   const portfolio = ensureUrl(consultant.portfolio_url);
@@ -39,7 +43,7 @@ export function ConsultantContact({
           <div className="p-2 rounded-lg bg-primary/10">
             <Mail className="h-4 w-4 text-primary" />
           </div>
-          <CardTitle className="text-xl">Contact</CardTitle>
+          <CardTitle className="text-xl">{t.consultantProfile.contactTitle}</CardTitle>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -95,7 +99,7 @@ export function ConsultantContact({
                   <Linkedin className="h-3.5 w-3.5 text-primary" />
                 </div>
                 <span className="text-sm text-foreground group-hover:text-primary transition-colors">
-                  LinkedIn Profile
+                  {t.consultantProfile.linkedin}
                 </span>
               </a>
             )}
@@ -111,7 +115,7 @@ export function ConsultantContact({
                   <Github className="h-3.5 w-3.5 text-primary" />
                 </div>
                 <span className="text-sm text-foreground group-hover:text-primary transition-colors">
-                  GitHub Profile
+                  {t.consultantProfile.github}
                 </span>
               </a>
             )}
@@ -127,7 +131,7 @@ export function ConsultantContact({
                   <Globe className="h-3.5 w-3.5 text-primary" />
                 </div>
                 <span className="text-sm text-foreground group-hover:text-primary transition-colors">
-                  Portfolio
+                  {t.consultantProfile.portfolio}
                 </span>
               </a>
             )}

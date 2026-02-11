@@ -13,6 +13,7 @@ import type { Availability } from "@/components/consultants/ConsultantAvailabili
 import { Pencil, Briefcase, MapPin, Calendar } from "lucide-react";
 
 import { Consultant, Skill, Experience, Education } from "@/types/consultant";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 type Props = {
   consultant: Consultant;
@@ -31,6 +32,7 @@ export function ConsultantDetailPageContent({
   currentAvailability,
   user,
 }: Props) {
+  const { t } = useLanguage();
   const status =
     currentAvailability?.status ?? consultant?.availability_status ?? null;
 
@@ -49,8 +51,15 @@ export function ConsultantDetailPageContent({
     }
   };
 
-  const fmtStatus = (s?: string | null) =>
-    s ? s.slice(0, 1).toUpperCase() + s.slice(1) : "Unknown";
+  const fmtStatus = (s?: string | null) => {
+    if (!s) return t.consultantProfile.status.unknown;
+
+    const key = s.toLowerCase();
+    return (
+      (t.consultantProfile.status as Record<string, string>)[key] ||
+      s.charAt(0).toUpperCase() + s.slice(1)
+    );
+  };
 
   const expYears =
     typeof consultant?.experience_years === "number"
@@ -87,10 +96,13 @@ export function ConsultantDetailPageContent({
                   {expYears !== null && (
                     <>
                       <span className="text-muted-foreground/50">•</span>
-                      <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5">
                         <Calendar className="h-3.5 w-3.5" />
                         <span className="text-sm">
-                          ~{expYears} yrs experience
+                          {t.consultantProfile.yearsExperience.replace(
+                            "{years}",
+                            String(expYears)
+                          )}
                         </span>
                       </div>
                     </>
@@ -125,7 +137,7 @@ export function ConsultantDetailPageContent({
             <Link href="/dashboard/profile">
               <Button className="gap-2">
                 <Pencil className="h-4 w-4" />
-                Edit Profile
+                {t.consultantProfile.editProfile}
               </Button>
             </Link>
           )}

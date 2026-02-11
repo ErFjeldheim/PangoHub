@@ -8,9 +8,16 @@ import type {
   Experience as ExperienceRow,
   Education as EducationRow,
 } from "@/types/consultant";
-import type { User, ProfileSkill, Experience, Education, ProfileDepartment, Skill as PBSkill } from "@/types/pocketbase";
+import type { User, ProfileSkill, Experience, Education, ProfileDepartment, Skill as PBSkill, AvailabilityMonth } from "@/types/pocketbase";
 
-function mapUserToConsultant(u: User, deptName?: string): Consultant {
+function calculateStatus(available: number, committed: number): string {
+    if (available <= 0) return "unavailable";
+    if (committed >= available) return "busy";
+    if (committed > 0) return "partly";
+    return "available";
+}
+
+function mapUserToConsultant(u: User, deptName?: string, status?: string): Consultant {
     return {
         id: u.id,
         first_name: u.first_name,
@@ -26,7 +33,7 @@ function mapUserToConsultant(u: User, deptName?: string): Consultant {
         updated_at: u.updated,
         display_name: u.display_name || `${u.first_name} ${u.last_name}`,
         email: u.email,
-        availability_status: null,
+        availability_status: (status as any) || null,
         experience_years: null,
         primary_department: deptName || null,
     }
@@ -46,7 +53,23 @@ export async function searchConsultants(query: string): Promise<Consultant[]> {
       sort: 'first_name'
   });
 
-  return users.map(u => mapUserToConsultant(u));
+  if (users.length === 0) return [];
+
+  const currentMonth = new Date().toISOString().substring(0, 7);
+  let availabilityMap = new Map<string, string>();
+  try {
+      const availRecords = await pb.collection("availability_months").getFullList<AvailabilityMonth>({
+          filter: `month ~ "${currentMonth}"`
+      });
+      availRecords.forEach(r => {
+          const status = r.status || calculateStatus(r.hours_available || 0, r.hours_committed || 0);
+          availabilityMap.set(r.user, status);
+      });
+  } catch (e) {
+      console.error("Failed to fetch availability for search:", e);
+  }
+
+  return users.map(u => mapUserToConsultant(u, undefined, availabilityMap.get(u.id)));
 }
 
 export async function getConsultant(consultantId: string): Promise<Consultant> {
@@ -77,11 +100,26 @@ export async function getConsultantsForDepartment(departmentId: string): Promise
           filter: `department="${departmentId}"`,
           expand: 'user'
       });
+
+  const currentMonth = new Date().toISOString().substring(0, 7);
+  const currentMonthFilter = `${currentMonth}`;
+  let availabilityMap = new Map<string, string>();
+  try {
+      const availRecords = await pb.collection("availability_months").getFullList<AvailabilityMonth>({
+          filter: `month ~ "${currentMonthFilter}"`
+      });
+      availRecords.forEach(r => {
+          const status = r.status || calculateStatus(r.hours_available || 0, r.hours_committed || 0);
+          availabilityMap.set(r.user, status);
+      });
+  } catch (e) {
+      console.error("Failed to fetch availability for search:", e);
+  }
       
       return assignments.map(a => {
           const u = a.expand?.user as User;
           if (!u) return null;
-          return mapUserToConsultant(u);
+          return mapUserToConsultant(u, undefined, availabilityMap.get(u.id));
       }).filter((u): u is Consultant => u !== null);
   } catch {
       return [];

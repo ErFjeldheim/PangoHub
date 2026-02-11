@@ -1,5 +1,8 @@
+"use client";
+
 import { Badge } from "@/components/ui/badge";
 import { type AvailabilityStatus } from "@/types/consultant";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 function getStatusColor(status?: AvailabilityStatus) {
   switch (status) {
@@ -17,9 +20,11 @@ function getStatusColor(status?: AvailabilityStatus) {
 }
 
 export function AvailabilityBadge({ status }: { status?: AvailabilityStatus }) {
-  const label = status
-    ? status.charAt(0).toUpperCase() + status.slice(1)
-    : "Unknown";
+  const { t } = useLanguage();
+  const label =
+    status && status in t.consultantProfile.status
+      ? (t.consultantProfile.status as Record<string, string>)[status]
+      : t.consultantProfile.status.unknown;
 
   return (
     <Badge className={`${getStatusColor(status)} text-xs font-medium`}>

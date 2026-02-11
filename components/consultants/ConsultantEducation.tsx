@@ -1,13 +1,18 @@
+"use client";
+
 // components/consultants/ConsultantEducation.tsx
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GraduationCap } from "lucide-react";
 import type { Education } from "@/types/consultant";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 export function ConsultantEducation({
   educations,
 }: {
   educations: Education[];
 }) {
+  const { t } = useLanguage();
+
   return (
     <Card className="border-border/40 shadow-sm hover:shadow-md transition-shadow">
       <CardHeader className="pb-4">
@@ -15,7 +20,7 @@ export function ConsultantEducation({
           <div className="p-2 rounded-lg bg-primary/10">
             <GraduationCap className="h-4 w-4 text-primary" />
           </div>
-          <CardTitle className="text-xl">Education</CardTitle>
+          <CardTitle className="text-xl">{t.consultantProfile.educationTitle}</CardTitle>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">

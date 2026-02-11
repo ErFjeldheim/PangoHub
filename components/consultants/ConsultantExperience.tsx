@@ -1,13 +1,18 @@
+"use client";
+
 // components/consultants/ConsultantExperience.tsx
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Briefcase } from "lucide-react";
 import type { Experience } from "@/types/consultant";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 export function ConsultantExperience({
   experiences,
 }: {
   experiences: Experience[];
 }) {
+  const { t } = useLanguage();
+
   return (
     <Card className="border-border/40 shadow-sm hover:shadow-md transition-shadow">
       <CardHeader className="pb-4">
@@ -15,7 +20,7 @@ export function ConsultantExperience({
           <div className="p-2 rounded-lg bg-primary/10">
             <Briefcase className="h-4 w-4 text-primary" />
           </div>
-          <CardTitle className="text-xl">Work Experience</CardTitle>
+          <CardTitle className="text-xl">{t.consultantProfile.experienceTitle}</CardTitle>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -42,7 +47,7 @@ export function ConsultantExperience({
                 {new Date(exp.start_date).getFullYear()} -{" "}
                 {exp.end_date
                   ? new Date(exp.end_date).getFullYear()
-                  : "Present"}
+                  : t.consultantProfile.present}
               </p>
               {exp.description && (
                 <p className="text-sm text-muted-foreground leading-relaxed pt-1">

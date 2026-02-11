@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Mail, Phone, Linkedin } from "lucide-react";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 type Props = {
   email?: string | null;
@@ -14,6 +15,7 @@ export function ConsultantContactButtons({
   phone,
   linkedin_url,
 }: Props) {
+  const { t } = useLanguage();
   return (
     <div className="flex gap-2">
       {email && (
@@ -23,7 +25,7 @@ export function ConsultantContactButtons({
           className="h-9 w-9 hover:bg-primary/10 hover:text-primary hover:border-primary/20 transition-colors bg-transparent"
           asChild
         >
-          <a href={`mailto:${email}`} title="Send email">
+          <a href={`mailto:${email}`} title={t.consultants.sendEmail}>
             <Mail className="h-4 w-4" />
           </a>
         </Button>
@@ -35,7 +37,7 @@ export function ConsultantContactButtons({
           className="h-9 w-9 hover:bg-primary/10 hover:text-primary hover:border-primary/20 transition-colors bg-transparent"
           asChild
         >
-          <a href={`tel:${phone}`} title="Call phone">
+          <a href={`tel:${phone}`} title={t.consultants.callPhone}>
             <Phone className="h-4 w-4" />
           </a>
         </Button>
@@ -51,7 +53,7 @@ export function ConsultantContactButtons({
             href={linkedin_url}
             target="_blank"
             rel="noopener noreferrer"
-            title="View LinkedIn"
+            title={t.consultants.viewLinkedIn}
           >
             <Linkedin className="h-4 w-4" />
           </a>

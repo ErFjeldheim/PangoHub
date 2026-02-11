@@ -1,7 +1,11 @@
+"use client";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText } from "lucide-react";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 export function ConsultantAbout({ bio }: { bio: string | null }) {
+  const { t } = useLanguage();
   return (
     <Card className="border-border/40 shadow-sm hover:shadow-md transition-shadow">
       <CardHeader className="pb-4">
@@ -9,7 +13,7 @@ export function ConsultantAbout({ bio }: { bio: string | null }) {
           <div className="p-2 rounded-lg bg-primary/10">
             <FileText className="h-4 w-4 text-primary" />
           </div>
-          <CardTitle className="text-xl">About</CardTitle>
+          <CardTitle className="text-xl">{t.consultantProfile.about}</CardTitle>
         </div>
       </CardHeader>
       <CardContent>
@@ -19,7 +23,7 @@ export function ConsultantAbout({ bio }: { bio: string | null }) {
           </p>
         ) : (
           <p className="text-muted-foreground/60 italic text-sm">
-            No bio provided yet.
+            {t.consultantProfile.noBio}
           </p>
         )}
       </CardContent>

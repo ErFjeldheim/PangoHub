@@ -1,6 +1,9 @@
+"use client";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock } from "lucide-react";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 export type Availability = {
   month: string;
@@ -37,11 +40,13 @@ export function ConsultantAvailability({
 }: {
   availability: Availability | null;
 }) {
+  const { t, language } = useLanguage();
+
   if (!availability) return null;
 
   const { month, hours_available, hours_committed, hours_free, status } =
     availability;
-  const monthLabel = new Date(month).toLocaleDateString(undefined, {
+  const monthLabel = new Date(month).toLocaleDateString(language === 'nb' ? 'nb-NO' : 'en-US', {
     year: "numeric",
     month: "long",
   });
@@ -57,10 +62,10 @@ export function ConsultantAvailability({
           <div className="p-2 rounded-lg bg-primary/10">
             <Calendar className="h-4 w-4 text-primary" />
           </div>
-          <CardTitle className="text-xl">Availability</CardTitle>
+          <CardTitle className="text-xl">{t.consultantProfile.availabilityTitle}</CardTitle>
         </div>
         <Badge className={getStatusColor(status)}>
-          {status[0].toUpperCase() + status.slice(1)}
+          {(t.consultantProfile.status as Record<string, string>)[status] || status[0].toUpperCase() + status.slice(1)}
         </Badge>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -72,7 +77,7 @@ export function ConsultantAvailability({
         <div className="grid grid-cols-3 gap-3">
           <div className="space-y-1 p-3 rounded-lg bg-muted/50">
             <div className="text-xs text-muted-foreground font-medium">
-              Available
+              {t.consultantProfile.availableHours}
             </div>
             <div className="text-lg font-semibold text-foreground">
               {hours_available}h
@@ -80,7 +85,7 @@ export function ConsultantAvailability({
           </div>
           <div className="space-y-1 p-3 rounded-lg bg-muted/50">
             <div className="text-xs text-muted-foreground font-medium">
-              Committed
+              {t.consultantProfile.committedHours}
             </div>
             <div className="text-lg font-semibold text-foreground">
               {hours_committed}h
@@ -88,7 +93,7 @@ export function ConsultantAvailability({
           </div>
           <div className="space-y-1 p-3 rounded-lg bg-muted/50">
             <div className="text-xs text-muted-foreground font-medium">
-              Free
+              {t.consultantProfile.freeHours}
             </div>
             <div className="text-lg font-semibold text-foreground">
               {hours_free}h
@@ -99,7 +104,7 @@ export function ConsultantAvailability({
         <div className="space-y-2 pt-2">
           <div className="flex justify-between items-center text-xs">
             <span className="text-muted-foreground font-medium">
-              Utilization
+              {t.consultantProfile.utilization}
             </span>
             <span className="font-semibold text-foreground">
               {utilization}%
