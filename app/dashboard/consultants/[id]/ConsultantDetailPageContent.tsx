@@ -60,7 +60,7 @@ export function ConsultantDetailPageContent({
   return (
     <div className="space-y-8">
       {/* Header Section */}
-      <div className="relative overflow-hidden rounded-xl border border-border/40 bg-gradient-to-br from-primary/5 via-background to-background p-8 shadow-sm">
+      <div className="relative overflow-hidden rounded-xl border border-border/40 bg-card p-8 shadow-sm">
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6">
           <div className="flex items-start gap-4">
             {/* Avatar */}
