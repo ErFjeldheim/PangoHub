@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import type { AvailabilityRow, AvailabilityStatus } from "@/types/availability";
 import { useFormStatus } from "react-dom";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 function getStatusColor(status: AvailabilityStatus) {
   switch (status) {
@@ -66,7 +67,7 @@ function SavingButton({ label = "Save" }: { label?: string }) {
   return (
     <Button
       disabled={pending}
-      className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-md hover:shadow-lg transition-all duration-200"
+      className="bg-accent hover:bg-accent/90 text-accent-foreground dark:bg-secondary dark:text-secondary-foreground dark:hover:bg-secondary/90 shadow-md hover:shadow-lg transition-all duration-200"
       size="lg"
     >
       {pending ? (
@@ -93,6 +94,7 @@ export function AvailabilityManagerClient({
   initial: AvailabilityRow[];
   saveMonthAction: (fd: FormData) => Promise<AvailabilityRow>;
 }) {
+  const { t } = useLanguage();
   // optimistic local editing of hours_available
   const [optimisticRows, updateOptimistic] = useOptimistic(
     initial,
@@ -149,10 +151,10 @@ export function AvailabilityManagerClient({
           </div>
           <div>
             <CardTitle className="text-2xl font-bold text-balance">
-              Monthly Availability Manager
+              {t.profile.availability.title}
             </CardTitle>
             <p className="text-muted-foreground mt-1">
-              Set your work hours and optional notes per month
+              {t.profile.availability.subtitle}
             </p>
           </div>
         </div>
@@ -163,7 +165,7 @@ export function AvailabilityManagerClient({
             <TrendingUp className="w-5 h-5 text-emerald-600" />
             <div>
               <p className="text-sm font-medium text-emerald-800 dark:text-emerald-400">
-                Total Available
+                {t.profile.availability.totalAvailable}
               </p>
               <p className="text-lg font-bold text-emerald-900 dark:text-emerald-300">
                 {totals.totalAvailable}h
@@ -174,7 +176,7 @@ export function AvailabilityManagerClient({
             <Clock className="w-5 h-5 text-blue-600" />
             <div>
               <p className="text-sm font-medium text-blue-800 dark:text-blue-400">
-                Committed
+                {t.profile.availability.committed}
               </p>
               <p className="text-lg font-bold text-blue-900 dark:text-blue-300">
                 {totals.totalCommitted}h
@@ -185,7 +187,7 @@ export function AvailabilityManagerClient({
             <CheckCircle2 className="w-5 h-5 text-purple-600" />
             <div>
               <p className="text-sm font-medium text-purple-800 dark:text-purple-400">
-                Remaining
+                {t.profile.availability.remaining}
               </p>
               <p className="text-lg font-bold text-purple-900 dark:text-purple-300">
                 {totals.remaining}h
@@ -245,7 +247,7 @@ export function AvailabilityManagerClient({
 
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                         <div>
-                          <p className="text-muted-foreground">Available</p>
+                          <p className="text-muted-foreground">{t.profile.availability.available}</p>
                           <p className="font-semibold">
                             {localHours[entry.month] ??
                               entry.hours_available ??
@@ -254,19 +256,19 @@ export function AvailabilityManagerClient({
                           </p>
                         </div>
                         <div>
-                          <p className="text-muted-foreground">Committed</p>
+                          <p className="text-muted-foreground">{t.profile.availability.committed}</p>
                           <p className="font-semibold">
                             {entry.hours_committed || 0}h
                           </p>
                         </div>
                         <div>
-                          <p className="text-muted-foreground">Remaining</p>
+                          <p className="text-muted-foreground">{t.profile.availability.remaining}</p>
                           <p className="font-semibold text-emerald-600">
                             {remaining}h
                           </p>
                         </div>
                         <div>
-                          <p className="text-muted-foreground">Utilization</p>
+                          <p className="text-muted-foreground">{t.profile.availability.utilization}</p>
                           <p className="font-semibold">
                             {utilization.toFixed(0)}%
                           </p>
@@ -291,7 +293,7 @@ export function AvailabilityManagerClient({
                           htmlFor={`hours-${entry.month}`}
                           className="text-sm font-medium"
                         >
-                          Hours Available
+                          {t.profile.availability.hoursAvailable}
                         </Label>
                         <Input
                           id={`hours-${entry.month}`}
@@ -330,10 +332,10 @@ export function AvailabilityManagerClient({
                     }}
                     className="grid gap-3"
                   >
-                    <Label htmlFor={`notes-${entry.month}`}>Notes</Label>
+                    <Label htmlFor={`notes-${entry.month}`}>{t.profile.availability.notes}</Label>
                     <Textarea
                       id={`notes-${entry.month}`}
-                      placeholder="Optional: context, planned vacations, assignments, etc."
+                      placeholder={t.profile.availability.notesPlaceholder}
                       value={localNotes[entry.month] ?? ""}
                       onChange={(e) =>
                         setLocalNotes((prev) => ({
@@ -355,7 +357,7 @@ export function AvailabilityManagerClient({
                     />
 
                     <div className="flex justify-end">
-                      <SavingButton label="Save month" />
+                      <SavingButton label={t.profile.availability.saveMonth} />
                     </div>
                   </form>
                 </CardContent>

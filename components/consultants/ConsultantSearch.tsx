@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { searchConsultants } from "@/app/actions/consultants";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 export default function ConsultantSearch() {
   const [query, setQuery] = useState("");
@@ -14,6 +15,7 @@ export default function ConsultantSearch() {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const boxRef = useRef<HTMLDivElement | null>(null);
+  const { t } = useLanguage();
 
   // close dropdown on outside click
   useEffect(() => {
@@ -94,7 +96,7 @@ export default function ConsultantSearch() {
         <Input
           id="consultant-search"
           className="pl-10 pr-10 h-11 bg-background/50 backdrop-blur-sm border-border/50 focus-visible:ring-2 focus-visible:ring-primary/20 transition-all"
-          placeholder="Search consultants by name, skill, or project..."
+          placeholder={t.header.searchPlaceholder}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => results.length > 0 && setOpen(true)}
@@ -163,8 +165,9 @@ export default function ConsultantSearch() {
 
               <div className="border-t px-3 py-2 bg-muted/30">
                 <p className="text-xs text-muted-foreground text-center">
-                  Showing {results.length} result
-                  {results.length !== 1 ? "s" : ""}
+                  {t.header.showingResults
+                    .replace("{count}", String(results.length))
+                    .replace("{s}", results.length !== 1 ? "s" : "")}
                 </p>
               </div>
             </div>
@@ -176,10 +179,10 @@ export default function ConsultantSearch() {
                 <UserIcon className="h-6 w-6 text-muted-foreground" />
               </div>
               <p className="text-sm font-medium text-foreground mb-1">
-                No consultants found
+                {t.header.noResults}
               </p>
               <p className="text-xs text-muted-foreground">
-                Try adjusting your search terms
+                {t.header.tryAdjusting}
               </p>
             </div>
           )}

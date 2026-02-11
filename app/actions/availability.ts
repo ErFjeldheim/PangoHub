@@ -13,6 +13,13 @@ import {
   isAvailabilityStatus,
 } from "@/types/availability";
 
+function calculateStatus(available: number, committed: number): string {
+  if (available <= 0) return "unavailable";
+  if (committed >= available) return "busy";
+  if (committed > 0) return "partly";
+  return "available";
+}
+
 function clampHours(n: unknown, max = 744): number {
   const v = Number(n);
   if (!Number.isFinite(v) || v < 0) return 0;
@@ -25,7 +32,7 @@ function mapToAvailabilityRow(r: AvailabilityMonth): AvailabilityRow {
         month: r.month,
         hours_available: r.hours_available,
         hours_committed: r.hours_committed || 0,
-        status: (isAvailabilityStatus(r.status) ? r.status : "unavailable"),
+        status: (isAvailabilityStatus(r.status) ? r.status : calculateStatus(r.hours_available, r.hours_committed || 0)) as any,
         notes: r.notes || null,
     };
 }
@@ -126,24 +133,31 @@ export async function upsertAvailabilityMonthAndNotesAction(
   const pb = await createServerClient();
 
   let recordId: string | null = null;
+  let committed = 0;
   try {
       const existing = await pb.collection('availability_months').getFirstListItem(`user="${profileId}" && month="${month}"`);
       recordId = existing.id;
+      committed = existing.hours_committed || 0;
   } catch {}
+
+  const status = calculateStatus(hours, committed);
 
   let record: AvailabilityMonth;
   try {
       if (recordId) {
           record = await pb.collection('availability_months').update<AvailabilityMonth>(recordId, {
               hours_available: hours,
-              notes
+              notes,
+              status,
           });
       } else {
           record = await pb.collection('availability_months').create<AvailabilityMonth>({
               user: profileId,
               month,
               hours_available: hours,
-              notes
+              hours_committed: committed,
+              notes,
+              status,
           });
       }
   } catch (err) {
@@ -176,22 +190,29 @@ export async function upsertAvailabilityMonth(
   const hours = clampHours(hoursAvailable);
 
   let recordId: string | null = null;
+  let committed = 0;
   try {
       const existing = await pb.collection('availability_months').getFirstListItem(`user="${profileId}" && month="${month}"`);
       recordId = existing.id;
+      committed = existing.hours_committed || 0;
   } catch {}
+
+  const status = calculateStatus(hours, committed);
 
   let record: AvailabilityMonth;
   try {
       if (recordId) {
           record = await pb.collection('availability_months').update<AvailabilityMonth>(recordId, {
-              hours_available: hours
+              hours_available: hours,
+              status
           });
       } else {
           record = await pb.collection('availability_months').create<AvailabilityMonth>({
               user: profileId,
               month,
-              hours_available: hours
+              hours_available: hours,
+              status,
+              hours_committed: committed
           });
       }
   } catch (err) {
@@ -212,23 +233,29 @@ export async function setCommittedHours(
   const safeCommitted = clampHours(hoursCommitted);
 
   let recordId: string | null = null;
+  let available = 0;
   try {
       const existing = await pb.collection('availability_months').getFirstListItem(`user="${profileId}" && month="${month}"`);
       recordId = existing.id;
+      available = existing.hours_available || 0;
   } catch {}
+
+  const status = calculateStatus(available, safeCommitted);
 
   let record: AvailabilityMonth;
   try {
       if (recordId) {
           record = await pb.collection('availability_months').update<AvailabilityMonth>(recordId, {
-              hours_committed: safeCommitted
+              hours_committed: safeCommitted,
+              status
           });
       } else {
           record = await pb.collection('availability_months').create<AvailabilityMonth>({
               user: profileId,
               month,
               hours_available: 0,
-              hours_committed: safeCommitted
+              hours_committed: safeCommitted,
+              status
           });
       }
   } catch (err) {
