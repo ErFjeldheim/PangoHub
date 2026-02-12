@@ -1,6 +1,5 @@
 "use client";
 
-import { requireSalesAccess } from "@/lib/auth/server-auth";
 import { getSalesLeads, SalesLead } from "@/app/actions/sales";
 import { SalesLeadList } from "@/components/sales/SalesLeadList";
 import { SalesLeadForm } from "@/components/sales/SalesLeadForm";

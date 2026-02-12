@@ -68,7 +68,7 @@ export async function requireAdmin() {
 export async function requireSalesAccess() {
   const user = await getCurrentUser();
   if (!user) redirect("/auth/login");
-  if (user.role !== "admin" && user.role !== "seller") redirect("/dashboard");
+  if (user.role !== "admin" && user.role !== "seller" && user.role !== "consultant") redirect("/dashboard");
 }
 
 export async function requireSelf(profileId: string) {

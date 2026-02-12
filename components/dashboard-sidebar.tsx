@@ -62,7 +62,8 @@ export function SidebarContent({
 
   const isAdmin = !!profile.is_admin;
   const isSeller = profile.role === "seller";
-  const canAccessSales = isAdmin || isSeller;
+  const isConsultant = profile.role === "consultant";
+  const canAccessSales = isAdmin || isSeller || isConsultant;
 
   const navBase = [
     {
