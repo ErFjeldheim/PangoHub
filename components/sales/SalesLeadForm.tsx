@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,12 +13,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { createSalesLead, createSalesLeadFromTemplate, updateSalesLead } from "@/app/actions/sales";
+import { createSalesLead, createSalesLeadFromTemplate, updateSalesLead, getLeadRequirements, SalesLead } from "@/app/actions/sales";
 import { Plus, LayoutTemplate, Settings2, Pencil } from "lucide-react";
 import { TemplateSelector } from "./TemplateSelector";
 import { ProjectTemplate, PROJECT_TEMPLATES } from "@/lib/sales/templates";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { SalesLead } from "@/app/actions/sales";
 
 type FormData = {
   name: string;
@@ -29,11 +28,9 @@ type FormData = {
 };
 
 export function SalesLeadForm({ 
-    lead, 
-    initialSkills = [] 
+    lead 
 }: { 
     lead?: SalesLead; 
-    initialSkills?: string[] 
 }) {
   const isEdit = !!lead;
   const [open, setOpen] = useState(false);
@@ -46,9 +43,23 @@ export function SalesLeadForm({
           description: lead.description || "",
           startDate: lead.start_date ? new Date(lead.start_date).toISOString().split('T')[0] : "",
           endDate: lead.end_date ? new Date(lead.end_date).toISOString().split('T')[0] : "",
-          skills: initialSkills.join(", ")
       } : undefined
   });
+
+  // Fetch skills only when editing and dialog opens
+  useEffect(() => {
+      if (isEdit && open && lead) {
+          const loadSkills = async () => {
+              try {
+                  const reqs = await getLeadRequirements(lead.id);
+                  setValue("skills", reqs.skills.join(", "), { shouldDirty: false });
+              } catch (error) {
+                  console.error("Failed to load skills:", error);
+              }
+          };
+          loadSkills();
+      }
+  }, [isEdit, open, lead?.id, setValue]);
   
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -61,39 +72,43 @@ export function SalesLeadForm({
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
     
-    if (isEdit) {
-        const skills = data.skills?.split(",").map((s) => s.trim()).filter(Boolean) || [];
-        await updateSalesLead(lead.id, {
-            name: data.name,
-            description: data.description,
-            startDate: data.startDate || undefined,
-            endDate: data.endDate || undefined,
-            skills,
-        });
-    } else if (selectedTemplateId) {
-        await createSalesLeadFromTemplate({
-            templateId: selectedTemplateId,
-            name: data.name,
-            startDate: data.startDate || undefined,
-            endDate: data.endDate || undefined,
-        });
-    } else {
-        const skills = data.skills?.split(",").map((s) => s.trim()).filter(Boolean) || [];
-        await createSalesLead({
-          name: data.name,
-          description: data.description,
-          startDate: data.startDate || undefined,
-          endDate: data.endDate || undefined,
-          skills,
-        });
-    }
-    
-    setIsSubmitting(false);
-    setOpen(false);
-    if (!isEdit) {
-        setSelectedTemplateId(null);
-        setActiveTab("templates");
-        reset();
+    try {
+        if (isEdit && lead) {
+            const skills = data.skills?.split(",").map((s) => s.trim()).filter(Boolean) || [];
+            await updateSalesLead(lead.id, {
+                name: data.name,
+                description: data.description,
+                startDate: data.startDate || undefined,
+                endDate: data.endDate || undefined,
+                skills,
+            });
+        } else if (selectedTemplateId) {
+            await createSalesLeadFromTemplate({
+                templateId: selectedTemplateId,
+                name: data.name,
+                startDate: data.startDate || undefined,
+                endDate: data.endDate || undefined,
+            });
+        } else {
+            const skills = data.skills?.split(",").map((s) => s.trim()).filter(Boolean) || [];
+            await createSalesLead({
+              name: data.name,
+              description: data.description,
+              startDate: data.startDate || undefined,
+              endDate: data.endDate || undefined,
+              skills,
+            });
+        }
+        setOpen(false);
+    } catch (error) {
+        console.error("Submit failed:", error);
+    } finally {
+        setIsSubmitting(false);
+        if (!isEdit) {
+            setSelectedTemplateId(null);
+            setActiveTab("templates");
+            reset();
+        }
     }
   };
 
@@ -108,7 +123,15 @@ export function SalesLeadForm({
     }}>
       <DialogTrigger asChild>
         {isEdit ? (
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors">
+            <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                }}
+            >
                 <Pencil className="h-4 w-4" />
             </Button>
         ) : (

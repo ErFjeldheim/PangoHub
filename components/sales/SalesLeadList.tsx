@@ -25,19 +25,7 @@ import { SalesLeadForm } from "./SalesLeadForm";
 import { useState, useEffect } from "react";
 
 export function SalesLeadList({ leads }: { leads: SalesLead[] }) {
-  const [leadSkills, setLeadSkills] = useState<Record<string, string[]>>({});
-
-  useEffect(() => {
-      const fetchAllSkills = async () => {
-          const skillMap: Record<string, string[]> = {};
-          for (const lead of leads) {
-              const reqs = await getLeadRequirements(lead.id);
-              skillMap[lead.id] = reqs.skills;
-          }
-          setLeadSkills(skillMap);
-      };
-      if (leads.length > 0) fetchAllSkills();
-  }, [leads]);
+  const [openLeadId, setOpenLeadId] = useState<string | null>(null);
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
       e.preventDefault();
@@ -59,7 +47,7 @@ export function SalesLeadList({ leads }: { leads: SalesLead[] }) {
   return (
     <div className="grid gap-4">
       {leads.map((lead) => (
-        <Sheet key={lead.id}>
+        <Sheet key={lead.id} open={openLeadId === lead.id} onOpenChange={(open) => setOpenLeadId(open ? lead.id : null)}>
           <SheetTrigger asChild>
             <Card className="cursor-pointer hover:border-primary/50 transition-colors group relative overflow-hidden">
               {lead.totalPrice && lead.totalPrice > 0 && (
@@ -78,7 +66,7 @@ export function SalesLeadList({ leads }: { leads: SalesLead[] }) {
                     </CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
-                    <SalesLeadForm lead={lead} initialSkills={leadSkills[lead.id]} />
+                    <SalesLeadForm lead={lead} />
                     <Button 
                         variant="ghost" 
                         size="icon" 
@@ -115,45 +103,49 @@ export function SalesLeadList({ leads }: { leads: SalesLead[] }) {
             </Card>
           </SheetTrigger>
           <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto">
-            <SheetHeader className="mb-6 text-left">
-              <div className="flex justify-between items-start">
-                  <SheetTitle className="text-2xl font-bold">{lead.name}</SheetTitle>
-                  <div className="flex items-center gap-1 shrink-0">
-                      <SalesLeadForm lead={lead} initialSkills={leadSkills[lead.id]} />
-                      <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="text-muted-foreground hover:text-destructive"
-                          onClick={(e) => handleDelete(e, lead.id)}
-                      >
-                          <Trash2 className="h-5 w-5" />
-                      </Button>
-                  </div>
-              </div>
-              <SheetDescription className="text-base">{lead.description}</SheetDescription>
-              {lead.totalPrice && lead.totalPrice > 0 && (
-                <div className="flex gap-4 mt-4 p-3 bg-muted rounded-lg">
-                    <div className="flex flex-col">
-                        <span className="text-[10px] uppercase text-muted-foreground font-bold">Estimated Hours</span>
-                        <span className="text-lg font-bold">{lead.totalHours}h</span>
+            {openLeadId === lead.id && (
+                <>
+                    <SheetHeader className="mb-6 text-left">
+                    <div className="flex justify-between items-start">
+                        <SheetTitle className="text-2xl font-bold">{lead.name}</SheetTitle>
+                        <div className="flex items-center gap-1 shrink-0">
+                            <SalesLeadForm lead={lead} />
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="text-muted-foreground hover:text-destructive"
+                                onClick={(e) => handleDelete(e, lead.id)}
+                            >
+                                <Trash2 className="h-5 w-5" />
+                            </Button>
+                        </div>
                     </div>
-                    <div className="flex flex-col">
-                        <span className="text-[10px] uppercase text-muted-foreground font-bold">Estimated Price</span>
-                        <span className="text-lg font-bold text-primary">{lead.totalPrice.toLocaleString()} kr</span>
-                        <span className="text-[10px] text-muted-foreground italic">Excl. VAT</span>
-                    </div>
-                </div>
-              )}
-            </SheetHeader>
-            
-            <SuggestedTeam lead={lead} />
+                    <SheetDescription className="text-base">{lead.description}</SheetDescription>
+                    {lead.totalPrice && lead.totalPrice > 0 && (
+                        <div className="flex gap-4 mt-4 p-3 bg-muted rounded-lg">
+                            <div className="flex flex-col">
+                                <span className="text-[10px] uppercase text-muted-foreground font-bold">Estimated Hours</span>
+                                <span className="text-lg font-bold">{lead.totalHours}h</span>
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="text-[10px] uppercase text-muted-foreground font-bold">Estimated Price</span>
+                                <span className="text-lg font-bold text-primary">{lead.totalPrice.toLocaleString()} kr</span>
+                                <span className="text-[10px] text-muted-foreground italic">Excl. VAT</span>
+                            </div>
+                        </div>
+                    )}
+                    </SheetHeader>
+                    
+                    <SuggestedTeam lead={lead} />
 
-            <div className="mt-8 pt-8 border-t">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
-                    Available Resource Pool
-                </h3>
-                <ResourceMatcher lead={lead} />
-            </div>
+                    <div className="mt-8 pt-8 border-t">
+                        <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
+                            Available Resource Pool
+                        </h3>
+                        <ResourceMatcher lead={lead} />
+                    </div>
+                </>
+            )}
           </SheetContent>
         </Sheet>
       ))}
