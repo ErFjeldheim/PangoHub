@@ -235,7 +235,7 @@ export const translations = {
         skillsPlaceholder: "React, TypeScript, AWS",
         skillsHint: "Disse brukes til å finne konsulenter som matcher.",
         estimatedHours: "Estimert tid (timer)",
-        estimatedPrice: "Estimert pris (eks. mva)",
+        estimatedPrice: "Estimert pris (ekskl. mva)",
         templateBadge: "Mal: {name}",
         templateHint: "Avdelinger og ferdigheter blir automatisk lagt til.",
         back: "Tilbake",
