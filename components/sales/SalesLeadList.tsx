@@ -1,6 +1,6 @@
 "use client";
 
-import { SalesLead, deleteSalesLead, getLeadRequirements } from "@/app/actions/sales";
+import { SalesLead, deleteSalesLead } from "@/app/actions/sales";
 import {
   Card,
   CardContent,
@@ -22,15 +22,17 @@ import { ResourceMatcher } from "./ResourceMatcher";
 import { SuggestedTeam } from "./SuggestedTeam";
 import { Button } from "@/components/ui/button";
 import { SalesLeadForm } from "./SalesLeadForm";
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 export function SalesLeadList({ leads }: { leads: SalesLead[] }) {
+  const { t } = useLanguage();
   const [openLeadId, setOpenLeadId] = useState<string | null>(null);
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
       e.preventDefault();
       e.stopPropagation();
-      if (confirm("Are you sure you want to delete this mock project?")) {
+      if (confirm(t.sales.list.confirmDelete)) {
           await deleteSalesLead(id);
       }
   };
@@ -38,8 +40,8 @@ export function SalesLeadList({ leads }: { leads: SalesLead[] }) {
   if (leads.length === 0) {
     return (
       <div className="text-center py-12 bg-muted/50 rounded-lg border border-dashed">
-        <h3 className="text-lg font-medium">No Sales Leads</h3>
-        <p className="text-muted-foreground">Create a mock project to start matching consultants.</p>
+        <h3 className="text-lg font-medium">{t.sales.list.noLeads}</h3>
+        <p className="text-muted-foreground">{t.sales.list.noLeadsDesc}</p>
       </div>
     );
   }
@@ -48,24 +50,26 @@ export function SalesLeadList({ leads }: { leads: SalesLead[] }) {
     <div className="grid gap-4">
       {leads.map((lead) => (
         <Sheet key={lead.id} open={openLeadId === lead.id} onOpenChange={(open) => setOpenLeadId(open ? lead.id : null)}>
-          <SheetTrigger asChild>
-            <Card className="cursor-pointer hover:border-primary/50 transition-colors group relative overflow-hidden">
-              {lead.totalPrice && lead.totalPrice > 0 && (
+          <Card className="hover:border-primary/50 transition-colors group relative overflow-hidden">
+            {lead.totalPrice && lead.totalPrice > 0 && (
                 <div className="absolute top-0 right-0 p-2 bg-primary/5 text-primary text-[10px] font-bold uppercase tracking-wider rounded-bl-lg border-l border-b border-primary/20">
-                  {lead.totalPrice.toLocaleString()} kr
+                    {lead.totalPrice.toLocaleString()} kr
                 </div>
-              )}
-              <CardHeader className="pb-2">
-                <div className="flex justify-between items-start">
-                  <div className="pr-12">
-                    <CardTitle className="group-hover:text-primary transition-colors">
-                      {lead.name}
-                    </CardTitle>
-                    <CardDescription className="line-clamp-1 mt-1">
-                      {lead.description}
-                    </CardDescription>
-                  </div>
-                  <div className="flex items-center gap-2">
+            )}
+            
+            <div className="flex items-start justify-between p-6 pb-2">
+                <SheetTrigger asChild>
+                    <div className="flex-1 cursor-pointer pr-12">
+                        <CardTitle className="group-hover:text-primary transition-colors">
+                            {lead.name}
+                        </CardTitle>
+                        <CardDescription className="line-clamp-1 mt-1">
+                            {lead.description}
+                        </CardDescription>
+                    </div>
+                </SheetTrigger>
+
+                <div className="flex items-center gap-2 shrink-0">
                     <SalesLeadForm lead={lead} />
                     <Button 
                         variant="ghost" 
@@ -75,33 +79,39 @@ export function SalesLeadList({ leads }: { leads: SalesLead[] }) {
                     >
                         <Trash2 className="h-4 w-4" />
                     </Button>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary" />
-                  </div>
+                    <SheetTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary" />
+                        </Button>
+                    </SheetTrigger>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  {(lead.start_date || lead.end_date) && (
+            </div>
+
+            <SheetTrigger asChild>
+                <CardContent className="cursor-pointer pt-0 pb-6">
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    {(lead.start_date || lead.end_date) && (
+                        <div className="flex items-center gap-1.5">
+                        <Calendar className="h-3.5 w-3.5" />
+                        <span>
+                            {lead.start_date ? new Date(lead.start_date).toLocaleDateString() : 'TBD'} 
+                            {' - '} 
+                            {lead.end_date ? new Date(lead.end_date).toLocaleDateString() : 'TBD'}
+                        </span>
+                        </div>
+                    )}
                     <div className="flex items-center gap-1.5">
-                      <Calendar className="h-3.5 w-3.5" />
-                      <span>
-                        {lead.start_date ? new Date(lead.start_date).toLocaleDateString() : 'TBD'} 
-                        {' - '} 
-                        {lead.end_date ? new Date(lead.end_date).toLocaleDateString() : 'TBD'}
-                      </span>
+                        <Briefcase className="h-3.5 w-3.5" />
+                        <span>{lead.totalHours || lead.hours_required || 0}h</span>
                     </div>
-                  )}
-                  <div className="flex items-center gap-1.5">
-                    <Briefcase className="h-3.5 w-3.5" />
-                    <span>{lead.totalHours || lead.hours_required || 0}h</span>
-                  </div>
-                  <Badge variant="secondary" className="ml-auto">
-                    Mock Project
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-          </SheetTrigger>
+                    <Badge variant="secondary" className="ml-auto">
+                        {t.sales.list.mockBadge}
+                    </Badge>
+                    </div>
+                </CardContent>
+            </SheetTrigger>
+          </Card>
+
           <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto">
             {openLeadId === lead.id && (
                 <>
@@ -124,13 +134,13 @@ export function SalesLeadList({ leads }: { leads: SalesLead[] }) {
                     {lead.totalPrice && lead.totalPrice > 0 && (
                         <div className="flex gap-4 mt-4 p-3 bg-muted rounded-lg">
                             <div className="flex flex-col">
-                                <span className="text-[10px] uppercase text-muted-foreground font-bold">Estimated Hours</span>
+                                <span className="text-[10px] uppercase text-muted-foreground font-bold">{t.sales.list.estHours}</span>
                                 <span className="text-lg font-bold">{lead.totalHours}h</span>
                             </div>
                             <div className="flex flex-col">
-                                <span className="text-[10px] uppercase text-muted-foreground font-bold">Estimated Price</span>
+                                <span className="text-[10px] uppercase text-muted-foreground font-bold">{t.sales.list.estPrice}</span>
                                 <span className="text-lg font-bold text-primary">{lead.totalPrice.toLocaleString()} kr</span>
-                                <span className="text-[10px] text-muted-foreground italic">Excl. VAT</span>
+                                <span className="text-[10px] text-muted-foreground italic">{t.sales.list.exclVat}</span>
                             </div>
                         </div>
                     )}
@@ -140,7 +150,7 @@ export function SalesLeadList({ leads }: { leads: SalesLead[] }) {
 
                     <div className="mt-8 pt-8 border-t">
                         <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
-                            Available Resource Pool
+                            {t.sales.list.resourcePool}
                         </h3>
                         <ResourceMatcher lead={lead} />
                     </div>

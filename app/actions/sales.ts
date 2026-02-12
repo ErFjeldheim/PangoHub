@@ -37,7 +37,12 @@ export async function getSalesLeads() {
     const hours = await pb.collection("project_department_hours").getFullList({
       filter: `project="${lead.id}"`
     });
-    const totalHours = hours.reduce((acc, curr) => acc + (curr.hours_required || 0), 0);
+    
+    let totalHours = lead.hours_required || 0;
+    if (totalHours === 0 && hours.length > 0) {
+        totalHours = hours.reduce((acc, curr) => acc + (curr.hours_required || 0), 0);
+    }
+
     return {
       ...lead,
       totalHours,
@@ -298,6 +303,7 @@ export async function findMatchingConsultants(
 }
 
 export async function getLeadRequirements(projectId: string) {
+    await requireSalesAccess();
     const pb = await createServerClient();
     const projectSkills = await pb.collection("project_skills").getFullList({
         filter: `project="${projectId}"`,
@@ -324,6 +330,7 @@ export type TeamSlot = {
 };
 
 export async function getSuggestedTeam(projectId: string): Promise<TeamSlot[]> {
+    await requireSalesAccess();
     const pb = await createServerClient();
     const project = await pb.collection("projects").getOne(projectId);
     

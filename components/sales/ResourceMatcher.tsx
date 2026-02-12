@@ -7,8 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { CheckCircle2, XCircle, Clock } from "lucide-react";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 export function ResourceMatcher({ lead }: { lead: SalesLead }) {
+  const { t } = useLanguage();
   const [matches, setMatches] = useState<MatchResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [requirements, setRequirements] = useState<string[]>([]);
@@ -49,6 +51,7 @@ export function ResourceMatcher({ lead }: { lead: SalesLead }) {
                 <div className="h-6 w-16 bg-muted rounded-full" />
             </div>
         </div>
+        <p className="text-xs text-muted-foreground animate-pulse">{t.sales.matcher.loading}</p>
         <div className="space-y-3">
             {[1, 2, 3].map(i => (
                 <div key={i} className="h-24 bg-muted rounded-lg animate-pulse" />
@@ -61,11 +64,11 @@ export function ResourceMatcher({ lead }: { lead: SalesLead }) {
   return (
     <div className="space-y-4">
         <div>
-            <h3 className="text-sm font-medium mb-2">Required Skills</h3>
+            <h3 className="text-sm font-medium mb-2">{t.sales.matcher.requiredSkills}</h3>
             <div className="flex flex-wrap gap-2">
                 {requirements.length > 0 ? requirements.map(s => (
                     <Badge key={s} variant="outline">{s}</Badge>
-                )) : <span className="text-sm text-muted-foreground">No specific skills listed</span>}
+                )) : <span className="text-sm text-muted-foreground">{t.sales.matcher.noSkills}</span>}
             </div>
         </div>
 
@@ -83,7 +86,7 @@ export function ResourceMatcher({ lead }: { lead: SalesLead }) {
                             <div className="flex items-center justify-between mb-1">
                                 <h4 className="font-semibold truncate">{m.consultant.display_name}</h4>
                                 <div className="flex items-center gap-2">
-                                    <span className="text-sm font-bold text-primary">{m.score}% Match</span>
+                                    <span className="text-sm font-bold text-primary">{m.score}% {t.sales.matcher.match}</span>
                                     <Progress value={m.score} className="w-16 h-2" />
                                 </div>
                             </div>
@@ -97,8 +100,10 @@ export function ResourceMatcher({ lead }: { lead: SalesLead }) {
                                     ) : (
                                         <Clock className="h-3.5 w-3.5 text-amber-500" />
                                     )}
-                                    <span className="capitalize">{m.availability.status}</span>
-                                    {m.availability.hoursAvailable > 0 && <span>({m.availability.hoursAvailable}h free)</span>}
+                                    <span className="capitalize">
+                                        {(t.consultantProfile.status as Record<string, string>)[m.availability.status] || m.availability.status}
+                                    </span>
+                                    {m.availability.hoursAvailable > 0 && <span>({m.availability.hoursAvailable}h {t.sales.matcher.free})</span>}
                                 </div>
                             </div>
                         </div>

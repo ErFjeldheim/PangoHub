@@ -6,8 +6,10 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { CheckCircle2, UserPlus, AlertCircle, Clock } from "lucide-react";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 export function SuggestedTeam({ lead }: { lead: SalesLead }) {
+  const { t } = useLanguage();
   const [team, setTeam] = useState<TeamSlot[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -44,7 +46,7 @@ export function SuggestedTeam({ lead }: { lead: SalesLead }) {
   if (team.length === 0) {
       return (
           <div className="mt-8 p-4 border border-dashed rounded-lg bg-muted/30 text-center">
-              <p className="text-sm text-muted-foreground italic">No team suggestions available. Try adding required skills or departments to the project.</p>
+              <p className="text-sm text-muted-foreground italic">{t.sales.team.noSuggestions}</p>
           </div>
       );
   }
@@ -53,7 +55,7 @@ export function SuggestedTeam({ lead }: { lead: SalesLead }) {
     <div className="mt-8 space-y-4">
         <div>
             <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
-                Suggested Team
+                {t.sales.team.title}
             </h3>
         </div>
 
@@ -100,7 +102,7 @@ export function SuggestedTeam({ lead }: { lead: SalesLead }) {
                                         <UserPlus className="h-4 w-4 text-muted-foreground opacity-50" />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium text-muted-foreground">Ghost (Missing Talent)</p>
+                                        <p className="text-sm font-medium text-muted-foreground">{t.sales.team.ghostTitle}</p>
                                         <div className="flex flex-wrap gap-1 mt-1">
                                             {slot.missingSkills.map((s: string) => (
                                                 <span key={s} className="text-[9px] bg-muted text-muted-foreground px-1 rounded uppercase font-bold border border-muted-foreground/20">
@@ -119,7 +121,7 @@ export function SuggestedTeam({ lead }: { lead: SalesLead }) {
                                         <UserPlus className="h-4 w-4 text-muted-foreground" />
                                     </div>
                                     <div className="flex-1">
-                                        <p className="text-sm font-medium text-muted-foreground italic">No matching consultant found</p>
+                                        <p className="text-sm font-medium text-muted-foreground italic">{t.sales.team.noConsultant}</p>
                                     </div>
                                     <AlertCircle className="h-4 w-4 text-amber-500" />
                                 </div>

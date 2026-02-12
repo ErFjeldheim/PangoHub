@@ -1,19 +1,35 @@
+"use client";
+
 import { requireSalesAccess } from "@/lib/auth/server-auth";
-import { getSalesLeads } from "@/app/actions/sales";
+import { getSalesLeads, SalesLead } from "@/app/actions/sales";
 import { SalesLeadList } from "@/components/sales/SalesLeadList";
 import { SalesLeadForm } from "@/components/sales/SalesLeadForm";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { useEffect, useState } from "react";
 
-export default async function SalesPage() {
-  await requireSalesAccess();
-  const leads = await getSalesLeads();
+export default function SalesPage() {
+  const { t } = useLanguage();
+  const [leads, setLeads] = useState<SalesLead[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+      const load = async () => {
+          const data = await getSalesLeads();
+          setLeads(data);
+          setLoading(false);
+      };
+      load();
+  }, []);
+
+  if (loading) return <div className="p-8 text-center">{t.common.loading}</div>;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Sales & Resource Planning</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t.sales.title}</h1>
           <p className="text-muted-foreground">
-            Create mock projects to evaluate consultant availability and skills.
+            {t.sales.subtitle}
           </p>
         </div>
         <SalesLeadForm />
