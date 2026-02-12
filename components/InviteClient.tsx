@@ -28,7 +28,7 @@ import {
 } from "@/app/actions/accessRequest";
 import { PendingInvitationItem } from "@/components/PendingInvitationItem";
 
-type Role = "consultant" | "admin";
+type Role = "consultant" | "admin" | "seller";
 
 type Invitation = {
   id: string;

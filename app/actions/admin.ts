@@ -60,7 +60,7 @@ export async function setUserRoleAction(formData: FormData) {
   const pb = await createServerClient();
 
   const userId = String(formData.get("userId"));
-  const newRole = String(formData.get("newRole")) as "admin" | "consultant";
+  const newRole = String(formData.get("newRole")) as "admin" | "consultant" | "seller";
 
   await pb.collection("users").update(userId, {
       role: newRole

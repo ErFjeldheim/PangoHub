@@ -42,7 +42,7 @@ export async function sendInvitationEmail({
   const transporter = getTransporter();
   if (!transporter) return;
 
-  const roleName = role === "admin" ? "Administrator" : "Consultant";
+  const roleName = role === "admin" ? "Administrator" : role === "seller" ? "Seller" : "Consultant";
 
   await transporter.sendMail({
     from: `"PangoHub" <${FROM}>`,

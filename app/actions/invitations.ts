@@ -8,7 +8,7 @@ import { sendInvitationEmail, sendWelcomeEmail } from "@/lib/mail";
 
 export async function createInvitation(
   email: string,
-  role: "consultant" | "admin"
+  role: "consultant" | "admin" | "seller"
 ) {
   const pb = await createServerClient();
   const user = pb.authStore.record;

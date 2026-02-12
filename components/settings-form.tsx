@@ -21,7 +21,8 @@ import { Globe, Moon, Sun } from "lucide-react";
 
 type SettingsProfile = {
   email: string;
-  role: "admin" | "consultant";
+  role: "admin" | "consultant" | "seller";
+  is_admin?: boolean;
 };
 
 interface SettingsFormProps {

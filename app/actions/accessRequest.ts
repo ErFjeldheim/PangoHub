@@ -73,7 +73,7 @@ export async function getPendingAccessRequests(): Promise<AccessRequest[]> {
 
 export async function approveAccessRequest(
   id: string,
-  role: "consultant" | "admin" = "consultant"
+  role: "consultant" | "admin" | "seller" = "consultant"
 ) {
   const pb = await createServerClient();
 
