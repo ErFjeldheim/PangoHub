@@ -14,23 +14,49 @@ export function ResourceMatcher({ lead }: { lead: SalesLead }) {
   const [requirements, setRequirements] = useState<string[]>([]);
 
   useEffect(() => {
+    let isMounted = true;
     const load = async () => {
         setLoading(true);
-        const reqs = await getLeadRequirements(lead.id);
-        setRequirements(reqs.skills);
-        
-        const results = await findMatchingConsultants(
-            reqs.skills, 
-            lead.start_date, 
-            lead.end_date
-        );
-        setMatches(results);
-        setLoading(false);
+        try {
+            const reqs = await getLeadRequirements(lead.id);
+            if (!isMounted) return;
+            setRequirements(reqs.skills);
+            
+            const results = await findMatchingConsultants(
+                reqs.skills, 
+                lead.start_date, 
+                lead.end_date
+            );
+            if (!isMounted) return;
+            setMatches(results);
+        } catch (error) {
+            console.error("Failed to load matches:", error);
+        } finally {
+            if (isMounted) setLoading(false);
+        }
     };
     load();
-  }, [lead]);
+    return () => { isMounted = false; };
+  }, [lead.id, lead.start_date, lead.end_date]);
 
-  if (loading) return <div className="p-4 text-center">Finding best matches...</div>;
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <div className="animate-pulse space-y-2">
+            <div className="h-4 w-24 bg-muted rounded" />
+            <div className="flex gap-2">
+                <div className="h-6 w-16 bg-muted rounded-full" />
+                <div className="h-6 w-16 bg-muted rounded-full" />
+            </div>
+        </div>
+        <div className="space-y-3">
+            {[1, 2, 3].map(i => (
+                <div key={i} className="h-24 bg-muted rounded-lg animate-pulse" />
+            ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

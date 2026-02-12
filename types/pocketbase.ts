@@ -56,6 +56,7 @@ export interface Project extends BaseRecord {
     status?: string;
     owner?: string; // Relation to users
     hours_required?: number;
+    template_id?: string;
 }
 
 export interface Skill extends BaseRecord {
