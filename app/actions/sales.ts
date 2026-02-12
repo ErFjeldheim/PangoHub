@@ -113,6 +113,7 @@ export async function createSalesLead(data: {
   endDate?: string;
   hoursRequired?: number;
   skills?: string[];
+  departmentHours?: Record<string, number>;
 }) {
   await requireSalesAccess();
   const pb = await createServerClient();
@@ -126,6 +127,21 @@ export async function createSalesLead(data: {
       end_date: data.endDate,
       hours_required: data.hoursRequired,
     });
+
+    if (data.departmentHours) {
+        for (const [deptName, hours] of Object.entries(data.departmentHours)) {
+            try {
+                const dept = await pb.collection("departments").getFirstListItem(`name="${deptName}"`);
+                await pb.collection("project_department_hours").create({
+                    project: record.id,
+                    department: dept.id,
+                    hours_required: hours
+                });
+            } catch (e) {
+                console.error(`Failed to create hours for ${deptName}:`, e);
+            }
+        }
+    }
 
     if (data.skills && data.skills.length > 0) {
         for (const skillName of data.skills) {
@@ -175,6 +191,7 @@ export async function updateSalesLead(projectId: string, data: {
   endDate?: string;
   hoursRequired?: number;
   skills?: string[];
+  departmentHours?: Record<string, number>;
 }) {
   await requireSalesAccess();
   const pb = await createServerClient();
@@ -187,6 +204,29 @@ export async function updateSalesLead(projectId: string, data: {
       end_date: data.endDate,
       hours_required: data.hoursRequired,
     });
+
+    if (data.departmentHours) {
+        for (const [deptName, hours] of Object.entries(data.departmentHours)) {
+            try {
+                const dept = await pb.collection("departments").getFirstListItem(`name="${deptName}"`);
+                const existing = await pb.collection("project_department_hours").getFirstListItem(`project="${projectId}" && department="${dept.id}"`).catch(() => null);
+                
+                if (existing) {
+                    await pb.collection("project_department_hours").update(existing.id, {
+                        hours_required: hours
+                    });
+                } else {
+                    await pb.collection("project_department_hours").create({
+                        project: projectId,
+                        department: dept.id,
+                        hours_required: hours
+                    });
+                }
+            } catch (e) {
+                console.error(`Failed to update hours for ${deptName}:`, e);
+            }
+        }
+    }
 
     if (data.skills) {
         const existingSkills = await pb.collection("project_skills").getFullList({
@@ -220,6 +260,42 @@ export async function updateSalesLead(projectId: string, data: {
     console.error(e);
     return { error: "Failed to update lead" };
   }
+}
+
+export async function updateLeadHours(projectId: string, departmentHours: Record<string, number>) {
+    await requireSalesAccess();
+    const pb = await createServerClient();
+
+    let totalHours = 0;
+    for (const [deptName, hours] of Object.entries(departmentHours)) {
+        const val = Number(hours) || 0;
+        totalHours += val;
+        try {
+            const dept = await pb.collection("departments").getFirstListItem(`name="${deptName}"`);
+            const existing = await pb.collection("project_department_hours").getFirstListItem(`project="${projectId}" && department="${dept.id}"`).catch(() => null);
+            
+            if (existing) {
+                await pb.collection("project_department_hours").update(existing.id, {
+                    hours_required: val
+                });
+            } else if (val > 0) {
+                await pb.collection("project_department_hours").create({
+                    project: projectId,
+                    department: dept.id,
+                    hours_required: val
+                });
+            }
+        } catch (e) {
+            console.error(`Failed to update hours for ${deptName}:`, e);
+        }
+    }
+
+    await pb.collection("projects").update(projectId, {
+        hours_required: totalHours
+    });
+
+    revalidatePath("/dashboard/sales");
+    return { ok: true, totalHours, totalPrice: totalHours * HOURLY_RATE };
 }
 
 export async function findMatchingConsultants(
@@ -313,6 +389,22 @@ export async function getLeadRequirements(projectId: string) {
     return {
         skills: projectSkills.map(ps => ps.expand?.skill?.name).filter(Boolean) as string[]
     };
+}
+
+export async function getLeadDepartmentHours(projectId: string) {
+    await requireSalesAccess();
+    const pb = await createServerClient();
+    const records = await pb.collection("project_department_hours").getFullList({
+        filter: `project="${projectId}"`,
+        expand: "department"
+    });
+
+    const hours: Record<string, number> = {};
+    records.forEach(r => {
+        const name = r.expand?.department?.name;
+        if (name) hours[name] = r.hours_required || 0;
+    });
+    return hours;
 }
 
 export type TeamMember = {

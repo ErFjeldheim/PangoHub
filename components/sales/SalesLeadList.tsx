@@ -1,6 +1,6 @@
 "use client";
 
-import { SalesLead, deleteSalesLead } from "@/app/actions/sales";
+import { SalesLead, deleteSalesLead, getLeadDepartmentHours, updateLeadHours } from "@/app/actions/sales";
 import {
   Card,
   CardContent,
@@ -17,17 +17,24 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Briefcase, ChevronRight, DollarSign, Trash2 } from "lucide-react";
+import { Calendar, Briefcase, ChevronRight, Trash2, Building, Save, Loader2 } from "lucide-react";
 import { ResourceMatcher } from "./ResourceMatcher";
 import { SuggestedTeam } from "./SuggestedTeam";
 import { Button } from "@/components/ui/button";
 import { SalesLeadForm } from "./SalesLeadForm";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { getDepartments } from "@/app/actions/departments";
+import { Input } from "@/components/ui/input";
 
 export function SalesLeadList({ leads }: { leads: SalesLead[] }) {
   const { t } = useLanguage();
   const [openLeadId, setOpenLeadId] = useState<string | null>(null);
+  const [localLeads, setLocalLeads] = useState<SalesLead[]>(leads);
+
+  useEffect(() => {
+      setLocalLeads(leads);
+  }, [leads]);
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
       e.preventDefault();
@@ -37,7 +44,11 @@ export function SalesLeadList({ leads }: { leads: SalesLead[] }) {
       }
   };
 
-  if (leads.length === 0) {
+  const updateLeadInState = (updated: Partial<SalesLead> & { id: string }) => {
+      setLocalLeads(prev => prev.map(l => l.id === updated.id ? { ...l, ...updated } : l));
+  };
+
+  if (localLeads.length === 0) {
     return (
       <div className="text-center py-12 bg-muted/50 rounded-lg border border-dashed">
         <h3 className="text-lg font-medium">{t.sales.list.noLeads}</h3>
@@ -48,7 +59,7 @@ export function SalesLeadList({ leads }: { leads: SalesLead[] }) {
 
   return (
     <div className="grid gap-4">
-      {leads.map((lead) => (
+      {localLeads.map((lead) => (
         <Sheet key={lead.id} open={openLeadId === lead.id} onOpenChange={(open) => setOpenLeadId(open ? lead.id : null)}>
           <Card className="hover:border-primary/50 transition-colors group relative overflow-hidden">
             {lead.totalPrice && lead.totalPrice > 0 && (
@@ -112,53 +123,141 @@ export function SalesLeadList({ leads }: { leads: SalesLead[] }) {
             </SheetTrigger>
           </Card>
 
-          <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto">
+          <SheetContent className="w-[400px] sm:w-[640px] overflow-y-auto">
             {openLeadId === lead.id && (
-                <>
-                    <SheetHeader className="mb-6 text-left">
-                    <div className="flex justify-between items-start">
-                        <SheetTitle className="text-2xl font-bold">{lead.name}</SheetTitle>
-                        <div className="flex items-center gap-1 shrink-0">
-                            <SalesLeadForm lead={lead} />
-                            <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="text-muted-foreground hover:text-destructive"
-                                onClick={(e) => handleDelete(e, lead.id)}
-                            >
-                                <Trash2 className="h-5 w-5" />
-                            </Button>
-                        </div>
-                    </div>
-                    <SheetDescription className="text-base">{lead.description}</SheetDescription>
-                    {lead.totalPrice && lead.totalPrice > 0 && (
-                        <div className="flex gap-4 mt-4 p-3 bg-muted rounded-lg">
-                            <div className="flex flex-col">
-                                <span className="text-[10px] uppercase text-muted-foreground font-bold">{t.sales.list.estHours}</span>
-                                <span className="text-lg font-bold">{lead.totalHours}h</span>
-                            </div>
-                            <div className="flex flex-col">
-                                <span className="text-[10px] uppercase text-muted-foreground font-bold">{t.sales.list.estPrice}</span>
-                                <span className="text-lg font-bold text-primary">{lead.totalPrice.toLocaleString()} kr</span>
-                                <span className="text-[10px] text-muted-foreground italic">{t.sales.list.exclVat}</span>
-                            </div>
-                        </div>
-                    )}
-                    </SheetHeader>
-                    
-                    <SuggestedTeam lead={lead} />
-
-                    <div className="mt-8 pt-8 border-t">
-                        <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
-                            {t.sales.list.resourcePool}
-                        </h3>
-                        <ResourceMatcher lead={lead} />
-                    </div>
-                </>
+                <LazySheetContent 
+                    lead={lead} 
+                    t={t} 
+                    onDelete={(id) => handleDelete({ preventDefault: () => {}, stopPropagation: () => {} } as any, id)}
+                    onUpdate={updateLeadInState}
+                />
             )}
           </SheetContent>
         </Sheet>
       ))}
     </div>
   );
+}
+
+function LazySheetContent({ 
+    lead, 
+    t, 
+    onDelete,
+    onUpdate
+}: { 
+    lead: SalesLead, 
+    t: any, 
+    onDelete: (id: string) => void,
+    onUpdate: (u: Partial<SalesLead> & { id: string }) => void
+}) {
+    const [deptHours, setDeptHours] = useState<Record<string, number>>({});
+    const [allDepts, setAllDepts] = useState<{id: string, name: string}[]>([]);
+    const [saving, setSaving] = useState(false);
+    const [hasChanges, setHasChanges] = useState(false);
+
+    useEffect(() => {
+        const load = async () => {
+            const [depts, hours] = await Promise.all([
+                getDepartments(),
+                getLeadDepartmentHours(lead.id)
+            ]);
+            setAllDepts(depts.map(d => ({ id: d.id, name: d.name })));
+            setDeptHours(hours);
+        };
+        load();
+    }, [lead.id]);
+
+    const handleHourChange = (name: string, val: string) => {
+        const num = Number(val) || 0;
+        setDeptHours(prev => ({ ...prev, [name]: num }));
+        setHasChanges(true);
+    };
+
+    const handleSave = async () => {
+        setSaving(true);
+        const result = await updateLeadHours(lead.id, deptHours);
+        if (result.ok) {
+            onUpdate({
+                id: lead.id,
+                totalHours: result.totalHours,
+                totalPrice: result.totalPrice,
+                hours_required: result.totalHours
+            });
+            setHasChanges(false);
+        }
+        setSaving(false);
+    };
+
+    return (
+        <>
+            <SheetHeader className="mb-6 text-left">
+            <div className="flex justify-between items-start">
+                <SheetTitle className="text-2xl font-bold">{lead.name}</SheetTitle>
+                <div className="flex items-center gap-1 shrink-0">
+                    <SalesLeadForm lead={lead} />
+                    <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="text-muted-foreground hover:text-destructive"
+                        onClick={() => onDelete(lead.id)}
+                    >
+                        <Trash2 className="h-5 w-5" />
+                    </Button>
+                </div>
+            </div>
+            <SheetDescription className="text-base">{lead.description}</SheetDescription>
+            
+            <div className="mt-6 space-y-4">
+                <h3 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Department Allocation</h3>
+                <div className="grid gap-3 sm:grid-cols-2">
+                    {allDepts.map(dept => (
+                        <div key={dept.id} className="flex items-center gap-2 p-2 bg-muted/30 rounded-md border border-dashed hover:border-primary/30 transition-colors">
+                            <div className="flex-1 min-w-0">
+                                <p className="text-xs font-bold truncate flex items-center gap-1.5">
+                                    <Building className="h-3 w-3" />
+                                    {dept.name}
+                                </p>
+                            </div>
+                            <Input 
+                                type="number" 
+                                className="h-8 w-20 text-right text-xs bg-transparent border-none focus-visible:ring-1" 
+                                value={deptHours[dept.name] || 0}
+                                onChange={(e) => handleHourChange(dept.name, e.target.value)}
+                            />
+                        </div>
+                    ))}
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-primary/5 rounded-lg border border-primary/10">
+                    <div className="flex gap-6">
+                        <div className="flex flex-col">
+                            <span className="text-[10px] uppercase text-muted-foreground font-bold">{t.sales.list.estHours}</span>
+                            <span className="text-xl font-bold">{lead.totalHours}h</span>
+                        </div>
+                        <div className="flex flex-col">
+                            <span className="text-[10px] uppercase text-muted-foreground font-bold">{t.sales.list.estPrice}</span>
+                            <span className="text-xl font-bold text-primary">{lead.totalPrice?.toLocaleString()} kr</span>
+                        </div>
+                    </div>
+
+                    {hasChanges && (
+                        <Button size="sm" className="gap-2 animate-in fade-in slide-in-from-right-2" onClick={handleSave} disabled={saving}>
+                            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                            {saving ? t.common.saving : t.common.save}
+                        </Button>
+                    )}
+                </div>
+            </div>
+            </SheetHeader>
+            
+            <SuggestedTeam lead={lead} />
+
+            <div className="mt-8 pt-8 border-t">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
+                    {t.sales.list.resourcePool}
+                </h3>
+                <ResourceMatcher lead={lead} />
+            </div>
+        </>
+    );
 }

@@ -30,7 +30,7 @@ export function SuggestedTeam({ lead }: { lead: SalesLead }) {
     };
     load();
     return () => { isMounted = false; };
-  }, [lead.id]);
+  }, [lead.id, lead.hours_required]);
 
   if (loading) {
     return (
