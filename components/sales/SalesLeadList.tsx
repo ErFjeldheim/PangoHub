@@ -26,6 +26,7 @@ import { useState, useEffect } from "react";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { getDepartments } from "@/app/actions/departments";
 import { Input } from "@/components/ui/input";
+import { HOURLY_RATE } from "@/lib/sales/templates";
 
 export function SalesLeadList({ leads }: { leads: SalesLead[] }) {
   const { t } = useLanguage();
@@ -81,7 +82,7 @@ export function SalesLeadList({ leads }: { leads: SalesLead[] }) {
                 </SheetTrigger>
 
                 <div className="flex items-center gap-2 shrink-0">
-                    <SalesLeadForm lead={lead} />
+                    <SalesLeadForm lead={lead} onUpdate={updateLeadInState} />
                     <Button 
                         variant="ghost" 
                         size="icon" 
@@ -188,13 +189,16 @@ function LazySheetContent({
         setSaving(false);
     };
 
+    const liveTotalHours = Object.values(deptHours).reduce((acc, val) => acc + (Number(val) || 0), 0);
+    const liveTotalPrice = liveTotalHours * 675;
+
     return (
         <>
             <SheetHeader className="mb-6 text-left">
             <div className="flex justify-between items-start">
                 <SheetTitle className="text-2xl font-bold">{lead.name}</SheetTitle>
                 <div className="flex items-center gap-1 shrink-0">
-                    <SalesLeadForm lead={lead} />
+                    <SalesLeadForm lead={lead} onUpdate={onUpdate} />
                     <Button 
                         variant="ghost" 
                         size="icon" 
@@ -232,11 +236,11 @@ function LazySheetContent({
                     <div className="flex gap-6">
                         <div className="flex flex-col">
                             <span className="text-[10px] uppercase text-muted-foreground font-bold">{t.sales.list.estHours}</span>
-                            <span className="text-xl font-bold">{lead.totalHours}h</span>
+                            <span className="text-xl font-bold">{liveTotalHours}h</span>
                         </div>
                         <div className="flex flex-col">
                             <span className="text-[10px] uppercase text-muted-foreground font-bold">{t.sales.list.estPrice}</span>
-                            <span className="text-xl font-bold text-primary">{lead.totalPrice?.toLocaleString()} kr</span>
+                            <span className="text-xl font-bold text-primary">{liveTotalPrice.toLocaleString()} kr</span>
                         </div>
                     </div>
 

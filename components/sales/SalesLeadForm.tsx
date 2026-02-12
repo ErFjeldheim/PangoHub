@@ -32,9 +32,11 @@ type FormData = {
 };
 
 export function SalesLeadForm({ 
-    lead 
+    lead,
+    onUpdate
 }: { 
     lead?: SalesLead; 
+    onUpdate?: (u: Partial<SalesLead> & { id: string }) => void;
 }) {
   const { t } = useLanguage();
   const isEdit = !!lead;
@@ -62,7 +64,7 @@ export function SalesLeadForm({
   useEffect(() => {
     if (departmentHours) {
         const sum = Object.values(departmentHours).reduce((acc, val) => acc + (Number(val) || 0), 0);
-        if (sum !== hours) {
+        if (Number(sum) !== Number(hours)) {
             setValue("hoursRequired", sum, { shouldDirty: true });
         }
     }
@@ -119,10 +121,18 @@ export function SalesLeadForm({
 
         if (isEdit && lead) {
             await updateSalesLead(lead.id, payload);
+            if (onUpdate) {
+                onUpdate({
+                    id: lead.id,
+                    ...payload,
+                    totalHours: payload.hoursRequired,
+                    totalPrice: payload.hoursRequired * HOURLY_RATE
+                });
+            }
         } else {
             await createSalesLead(payload);
+            setOpen(false);
         }
-        setOpen(false);
     } catch (error) {
         console.error("Submit failed:", error);
     } finally {
