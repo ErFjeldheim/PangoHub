@@ -1,6 +1,6 @@
 "use client";
 
-import { SalesLead } from "@/app/actions/sales";
+import { SalesLead, deleteSalesLead } from "@/app/actions/sales";
 import {
   Card,
   CardContent,
@@ -17,10 +17,19 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Briefcase, ChevronRight } from "lucide-react";
+import { Calendar, Briefcase, ChevronRight, DollarSign, Trash2 } from "lucide-react";
 import { ResourceMatcher } from "./ResourceMatcher";
+import { Button } from "@/components/ui/button";
 
 export function SalesLeadList({ leads }: { leads: SalesLead[] }) {
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (confirm("Are you sure you want to delete this mock project?")) {
+          await deleteSalesLead(id);
+      }
+  };
+
   if (leads.length === 0) {
     return (
       <div className="text-center py-12 bg-muted/50 rounded-lg border border-dashed">
@@ -35,10 +44,15 @@ export function SalesLeadList({ leads }: { leads: SalesLead[] }) {
       {leads.map((lead) => (
         <Sheet key={lead.id}>
           <SheetTrigger asChild>
-            <Card className="cursor-pointer hover:border-primary/50 transition-colors group">
+            <Card className="cursor-pointer hover:border-primary/50 transition-colors group relative overflow-hidden">
+              {lead.totalPrice && lead.totalPrice > 0 && (
+                <div className="absolute top-0 right-0 p-2 bg-primary/5 text-primary text-[10px] font-bold uppercase tracking-wider rounded-bl-lg border-l border-b border-primary/20">
+                  {lead.totalPrice.toLocaleString()} kr
+                </div>
+              )}
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-start">
-                  <div>
+                  <div className="pr-12">
                     <CardTitle className="group-hover:text-primary transition-colors">
                       {lead.name}
                     </CardTitle>
@@ -46,7 +60,17 @@ export function SalesLeadList({ leads }: { leads: SalesLead[] }) {
                       {lead.description}
                     </CardDescription>
                   </div>
-                  <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary" />
+                  <div className="flex items-center gap-2">
+                    <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                        onClick={(e) => handleDelete(e, lead.id)}
+                    >
+                        <Trash2 className="h-4 w-4" />
+                    </Button>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary" />
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -61,12 +85,10 @@ export function SalesLeadList({ leads }: { leads: SalesLead[] }) {
                       </span>
                     </div>
                   )}
-                  {lead.hours_required && (
-                    <div className="flex items-center gap-1.5">
-                      <Briefcase className="h-3.5 w-3.5" />
-                      <span>{lead.hours_required}h</span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-1.5">
+                    <Briefcase className="h-3.5 w-3.5" />
+                    <span>{lead.totalHours || lead.hours_required || 0}h</span>
+                  </div>
                   <Badge variant="secondary" className="ml-auto">
                     Mock Project
                   </Badge>
@@ -75,9 +97,32 @@ export function SalesLeadList({ leads }: { leads: SalesLead[] }) {
             </Card>
           </SheetTrigger>
           <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto">
-            <SheetHeader className="mb-6">
-              <SheetTitle>{lead.name}</SheetTitle>
-              <SheetDescription>{lead.description}</SheetDescription>
+            <SheetHeader className="mb-6 text-left">
+              <div className="flex justify-between items-start">
+                  <SheetTitle className="text-2xl font-bold">{lead.name}</SheetTitle>
+                  <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="text-muted-foreground hover:text-destructive shrink-0"
+                      onClick={(e) => handleDelete(e, lead.id)}
+                  >
+                      <Trash2 className="h-5 w-5" />
+                  </Button>
+              </div>
+              <SheetDescription className="text-base">{lead.description}</SheetDescription>
+              {lead.totalPrice && lead.totalPrice > 0 && (
+                <div className="flex gap-4 mt-4 p-3 bg-muted rounded-lg">
+                    <div className="flex flex-col">
+                        <span className="text-[10px] uppercase text-muted-foreground font-bold">Estimated Hours</span>
+                        <span className="text-lg font-bold">{lead.totalHours}h</span>
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="text-[10px] uppercase text-muted-foreground font-bold">Estimated Price</span>
+                        <span className="text-lg font-bold text-primary">{lead.totalPrice.toLocaleString()} kr</span>
+                        <span className="text-[10px] text-muted-foreground italic">Excl. VAT</span>
+                    </div>
+                </div>
+              )}
             </SheetHeader>
             
             <ResourceMatcher lead={lead} />
