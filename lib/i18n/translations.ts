@@ -27,6 +27,8 @@ export const translations = {
       signOut: "Logg ut",
       admin: "Admin",
       member: "Medlem",
+      seller: "Selger",
+      sales: "Salg & Leads",
     },
     header: {
       searchPlaceholder: "Søk etter konsulenter...",
@@ -238,6 +240,8 @@ export const translations = {
       signOut: "Sign Out",
       admin: "Admin",
       member: "Member",
+      seller: "Seller",
+      sales: "Sales & Leads",
     },
     header: {
       searchPlaceholder: "Search consultants...",

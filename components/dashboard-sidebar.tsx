@@ -13,6 +13,7 @@ import {
   User,
   Building,
   Briefcase,
+  BadgeDollarSign,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -60,6 +61,8 @@ export function SidebarContent({
   };
 
   const isAdmin = !!profile.is_admin;
+  const isSeller = profile.role === "seller";
+  const canAccessSales = isAdmin || isSeller;
 
   const navBase = [
     {
@@ -111,6 +114,17 @@ export function SidebarContent({
       ]
     : [];
 
+  const navSales = canAccessSales
+    ? [
+        {
+          name: t.nav.sales,
+          href: "/dashboard/sales",
+          icon: BadgeDollarSign,
+          current: pathname.startsWith("/dashboard/sales"),
+        },
+      ]
+    : [];
+
   const navTail = [
     {
       name: t.nav.settings,
@@ -120,7 +134,7 @@ export function SidebarContent({
     },
   ];
 
-  const navigation = [...navBase, ...navAdmin, ...navTail];
+  const navigation = [...navBase, ...navSales, ...navAdmin, ...navTail];
 
   const initials = getInitials(
     profile.display_name,
@@ -174,7 +188,7 @@ export function SidebarContent({
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">{fullName}</p>
             <p className="text-xs text-muted-foreground">
-              {isAdmin ? t.nav.admin : t.nav.member}
+              {isAdmin ? t.nav.admin : isSeller ? t.nav.seller : t.nav.member}
             </p>
           </div>
         </div>

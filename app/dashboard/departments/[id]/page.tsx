@@ -2,7 +2,7 @@
 import { notFound } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getDepartmentDetails } from "@/app/actions/departments";
-import { getConsultantsForDepartment } from "@/app/actions/consultants";
+import { getConsultantsForDepartment, searchConsultants } from "@/app/actions/consultants";
 import { getProjectsForDepartment } from "@/app/actions/projects";
 import { getAggregatedAvailabilityForDepartment } from "@/app/actions/availability";
 import { DepartmentConsultantList } from "@/components/DepartmentConsultantList";
@@ -16,11 +16,12 @@ type PageProps = { params: Promise<{ id: string }> };
 export default async function DepartmentDetailPage({ params }: PageProps) {
   const { id } = await params;
 
-  const [department, consultants, projects, availability] = await Promise.all([
+  const [department, consultants, projects, availability, allConsultants] = await Promise.all([
     getDepartmentDetails(id),
     getConsultantsForDepartment(id),
     getProjectsForDepartment(id),
     getAggregatedAvailabilityForDepartment(id),
+    searchConsultants(""),
   ]);
 
   console.log("availability", availability);
@@ -76,7 +77,7 @@ export default async function DepartmentDetailPage({ params }: PageProps) {
         <TabsContent value="settings" className="pt-6">
           <DepartmentSettings
             department={department}
-            consultants={consultants}
+            consultants={allConsultants}
           />
         </TabsContent>
       </Tabs>

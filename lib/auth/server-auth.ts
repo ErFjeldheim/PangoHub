@@ -18,7 +18,7 @@ function mapUserToProfile(user: User) {
     portfolio_url: user.portfolio_url || "",
     display_name: user.display_name || `${user.first_name} ${user.last_name}`.trim() || user.email,
     email: user.email,
-    role: (user.role as "admin" | "consultant") || "consultant",
+    role: (user.role as "admin" | "consultant" | "seller") || "consultant",
   };
 }
 
@@ -63,6 +63,12 @@ export async function requireAuth() {
 
 export async function requireAdmin() {
   if (!(await isAdmin())) redirect("/dashboard");
+}
+
+export async function requireSalesAccess() {
+  const user = await getCurrentUser();
+  if (!user) redirect("/auth/login");
+  if (user.role !== "admin" && user.role !== "seller") redirect("/dashboard");
 }
 
 export async function requireSelf(profileId: string) {

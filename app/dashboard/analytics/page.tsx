@@ -1,7 +1,10 @@
 import { requireAdmin } from "@/lib/auth/server-auth";
+import { getAnalyticsStats } from "@/app/actions/analytics";
+import { AnalyticsDashboard } from "@/components/analytics/AnalyticsDashboard";
 
 export default async function AnalyticsPage() {
   await requireAdmin();
+  const stats = await getAnalyticsStats();
 
   return (
     <div className="space-y-6">
@@ -12,7 +15,7 @@ export default async function AnalyticsPage() {
         </p>
       </div>
 
-      <h1>In development</h1>
+      <AnalyticsDashboard stats={stats} />
     </div>
   );
 }

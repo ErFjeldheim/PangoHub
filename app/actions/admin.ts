@@ -36,7 +36,7 @@ export async function listUsersAndInvites(): Promise<{
   const pb = await createServerClient();
 
   const usersRecords = await pb.collection("users").getFullList<PBUser>({
-      sort: '-created'
+      sort: '-id'
   });
 
   const users = usersRecords.map(mapToAdminUser);
