@@ -519,6 +519,7 @@ export async function getSuggestedTeam(projectId: string): Promise<TeamSlot[]> {
         }
 
         for (const d of depts) {
+            if ((d.hours_required || 0) <= 0) continue;
             let remainingSkills = [...allRequiredSkills];
             const slotMembers: TeamMember[] = [];
             const deptName = d.expand?.department?.name || "Unknown";
@@ -592,6 +593,7 @@ export async function getSuggestedTeam(projectId: string): Promise<TeamSlot[]> {
     if (!template) return [];
 
     for (const deptReq of template.departments) {
+        if ((deptReq.hours || 0) <= 0) continue;
         let remainingSkills = [...deptReq.requiredSkills];
         const slotMembers: TeamSlot["members"] = [];
 
