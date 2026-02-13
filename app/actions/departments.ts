@@ -3,7 +3,14 @@
 import { createServerClient } from "@/lib/pocketbase-server";
 import { revalidatePath } from "next/cache";
 import { DepartmentDetails } from "@/types/department";
-import { Department, User } from "@/types/pocketbase";
+import { Department, User, ProfileDepartment, AvailabilityMonth } from "@/types/pocketbase";
+
+function calculateStatus(available: number, committed: number): string {
+    if (available <= 0) return "unavailable";
+    if (committed >= available) return "busy";
+    if (committed > 0) return "partly";
+    return "available";
+}
 
 export async function getDepartments() {
   const pb = await createServerClient();
@@ -12,11 +19,40 @@ export async function getDepartments() {
       sort: 'name'
   });
 
-  const allAssignments = await pb.collection('profile_departments').getFullList();
+  const allAssignments = await pb.collection('profile_departments').getFullList<ProfileDepartment>();
   
   const countMap = new Map<string, number>();
+  const availableCountMap = new Map<string, number>();
+
+  // Fetch current month availability
+  const currentMonth = new Date().toISOString().substring(0, 7);
+  let availabilityMap = new Map<string, { status: string; hours_available: number }>();
+  try {
+      const availRecords = await pb.collection("availability_months").getFullList<AvailabilityMonth>({
+          filter: `month ~ "${currentMonth}"`
+      });
+      availRecords.forEach(r => {
+          const status = r.status || calculateStatus(r.hours_available || 0, r.hours_committed || 0);
+          availabilityMap.set(r.user, { 
+              status, 
+              hours_available: r.hours_available || 0 
+          });
+      });
+  } catch (e) {
+      console.error("Failed to fetch availability for departments:", e);
+  }
+
   for (const a of allAssignments) {
       countMap.set(a.department, (countMap.get(a.department) || 0) + 1);
+      
+      const avail = availabilityMap.get(a.user);
+      if (avail) {
+          // A consultant is available if status === 'available' OR (hours_available > 0 AND status !== 'busy')
+          const isAvailable = avail.status === 'available' || (avail.hours_available > 0 && avail.status !== 'busy');
+          if (isAvailable) {
+              availableCountMap.set(a.department, (availableCountMap.get(a.department) || 0) + 1);
+          }
+      }
   }
 
   return departments.map(d => {
@@ -26,7 +62,8 @@ export async function getDepartments() {
           name: d.name,
           description: d.description || "",
           leader_name: leader ? (leader.display_name || `${leader.first_name} ${leader.last_name}`) : null,
-          consultant_count: countMap.get(d.id) || 0
+          consultant_count: countMap.get(d.id) || 0,
+          available_count: availableCountMap.get(d.id) || 0
       }
   });
 }
@@ -128,15 +165,66 @@ export type DepartmentOverview = {
 };
 
 export async function getDepartmentsOverview(): Promise<DepartmentOverview[]> {
-  const departments = await getDepartments();
+  const pb = await createServerClient();
   
-  return departments.map(d => ({
-      id: d.id,
-      name: d.name,
-      leaderName: d.leader_name,
-      totalConsultants: d.consultant_count,
-      availableConsultants: 0
-  }));
+  // 1. Fetches all departments.
+  const departments = await pb.collection('departments').getFullList<Department>({
+      expand: 'leader',
+      sort: 'name'
+  });
+
+  // 2. Fetches all user departments (profile_departments).
+  const allAssignments = await pb.collection('profile_departments').getFullList<ProfileDepartment>();
+  
+  // 3. Fetches all availability records for the current month.
+  const currentMonth = new Date().toISOString().substring(0, 7);
+  const availabilityMap = new Map<string, { status: string; hours: number }>();
+  
+  try {
+      const availRecords = await pb.collection("availability_months").getFullList<AvailabilityMonth>({
+          filter: `month ~ "${currentMonth}"`
+      });
+      availRecords.forEach(r => {
+          const status = r.status || calculateStatus(r.hours_available || 0, r.hours_committed || 0);
+          availabilityMap.set(r.user, {
+              status,
+              hours: r.hours_available || 0
+          });
+      });
+  } catch (e) {
+      console.error("Failed to fetch availability for overview:", e);
+  }
+
+  // 4. Calculates the number of available consultants per department.
+  const countMap = new Map<string, number>();
+  const availableCountMap = new Map<string, number>();
+
+  for (const a of allAssignments) {
+      // Total consultants count
+      countMap.set(a.department, (countMap.get(a.department) || 0) + 1);
+      
+      // Available consultants count
+      const avail = availabilityMap.get(a.user);
+      if (avail) {
+          // A consultant is available if status === 'available' OR (hours_available > 0 AND status !== 'busy')
+          const isAvailable = avail.status === 'available' || (avail.hours > 0 && avail.status !== 'busy');
+          if (isAvailable) {
+              availableCountMap.set(a.department, (availableCountMap.get(a.department) || 0) + 1);
+          }
+      }
+  }
+
+  // 5. Returns the DepartmentOverview array with correct consultantCount and availableConsultants.
+  return departments.map(d => {
+      const leader = d.expand?.leader as User | undefined;
+      return {
+          id: d.id,
+          name: d.name,
+          leaderName: leader ? (leader.display_name || `${leader.first_name} ${leader.last_name}`) : null,
+          totalConsultants: countMap.get(d.id) || 0,
+          availableConsultants: availableCountMap.get(d.id) || 0
+      }
+  });
 }
 
 export async function getAllDepartmentsBasic(): Promise<
