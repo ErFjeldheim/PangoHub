@@ -197,7 +197,7 @@ function LazySheetContent({
             <SheetHeader className="mb-6 text-left">
             <div className="flex justify-between items-start">
                 <SheetTitle className="text-2xl font-bold">{lead.name}</SheetTitle>
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="flex items-center gap-1 shrink-0 pr-8">
                     <SalesLeadForm lead={lead} onUpdate={onUpdate} />
                     <Button 
                         variant="ghost" 
