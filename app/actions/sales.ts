@@ -2,7 +2,7 @@
 
 import { createServerClient } from "@/lib/pocketbase-server";
 import { revalidatePath } from "next/cache";
-import type { Project, ProfileSkill, Skill, User, AvailabilityMonth } from "@/types/pocketbase";
+import type { Project, ProfileSkill, Skill, User, AvailabilityMonth, ProfileDepartment, Department } from "@/types/pocketbase";
 import { Consultant } from "@/types/consultant";
 import { requireSalesAccess } from "@/lib/auth/server-auth";
 import { PROJECT_TEMPLATES, HOURLY_RATE } from "@/lib/sales/templates";
@@ -27,15 +27,18 @@ export type MatchResult = {
 export async function getSalesLeads() {
   await requireSalesAccess();
   const pb = await createServerClient();
+  pb.autoCancellation(false);
   const leads = await pb.collection("projects").getFullList<SalesLead>({
     filter: 'status = "lead"',
     sort: "-id",
     expand: "client",
+    requestKey: null,
   });
 
   const enrichedLeads = await Promise.all(leads.map(async (lead) => {
     const hours = await pb.collection("project_department_hours").getFullList({
-      filter: `project="${lead.id}"`
+      filter: `project="${lead.id}"`,
+      requestKey: null,
     });
     
     let totalHours = lead.hours_required || 0;
@@ -312,6 +315,9 @@ export async function findMatchingConsultants(
   const userSkills = await pb.collection("profile_skills").getFullList<ProfileSkill>({
       expand: "skill"
   });
+  const userDepts = await pb.collection("profile_departments").getFullList<ProfileDepartment>({
+      expand: "department"
+  });
 
   const targetMonth = startDate ? startDate.substring(0, 7) : new Date().toISOString().substring(0, 7);
   
@@ -324,6 +330,10 @@ export async function findMatchingConsultants(
   const results: MatchResult[] = users.map(user => {
       const mySkills = userSkills.filter(ps => ps.user === user.id).map(ps => (ps.expand?.skill as Skill)?.name);
       
+      const myDepts = userDepts.filter(pd => pd.user === user.id);
+      const primaryDept = myDepts.find(pd => pd.is_primary) || myDepts[0];
+      const deptName = (primaryDept?.expand?.department as Department)?.name || null;
+
       const matched = requiredSkills.filter(req => mySkills.includes(req));
       const missing = requiredSkills.filter(req => !mySkills.includes(req));
       
@@ -363,7 +373,7 @@ export async function findMatchingConsultants(
               created_at: user.created, updated_at: user.updated,
               availability_status: status as any,
               experience_years: null,
-              primary_department: null
+              primary_department: deptName
           },
           score: Math.round(score),
           matchedSkills: matched,
