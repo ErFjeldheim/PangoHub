@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { findMatchingConsultants, MatchResult, SalesLead, getLeadRequirements } from "@/app/actions/sales";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { CheckCircle2, XCircle, Clock } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Building2 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 export function ResourceMatcher({ lead }: { lead: SalesLead }) {
@@ -105,6 +105,12 @@ export function ResourceMatcher({ lead }: { lead: SalesLead }) {
                                     </span>
                                     {m.availability.hoursAvailable > 0 && <span>({m.availability.hoursAvailable}h {t.sales.matcher.free})</span>}
                                 </div>
+                                {m.consultant.primary_department && (
+                                    <Badge variant="outline" className="font-normal gap-1 h-6 text-muted-foreground hover:bg-muted/50">
+                                        <Building2 className="h-3 w-3" />
+                                        {m.consultant.primary_department}
+                                    </Badge>
+                                )}
                             </div>
                         </div>
                     </div>

@@ -5,7 +5,7 @@ import { getSuggestedTeam, TeamSlot, SalesLead, TeamMember } from "@/app/actions
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { CheckCircle2, UserPlus, AlertCircle, Clock } from "lucide-react";
+import { CheckCircle2, UserPlus, AlertCircle, Clock, Building2 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 export function SuggestedTeam({ lead }: { lead: SalesLead }) {
@@ -83,7 +83,15 @@ export function SuggestedTeam({ lead }: { lead: SalesLead }) {
                                         </AvatarFallback>
                                     </Avatar>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium truncate">{m.consultant.display_name}</p>
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-sm font-medium truncate">{m.consultant.display_name}</p>
+                                            {m.consultant.primary_department && (
+                                                <Badge variant="outline" className="text-[10px] h-4 px-1 text-muted-foreground font-normal border-muted-foreground/20 gap-1">
+                                                    <Building2 className="h-2.5 w-2.5" />
+                                                    {m.consultant.primary_department}
+                                                </Badge>
+                                            )}
+                                        </div>
                                         <div className="flex flex-wrap gap-1 mt-1">
                                             {m.coveredSkills.map((s: string) => (
                                                 <span key={s} className="text-[9px] bg-emerald-100 text-emerald-700 px-1 rounded uppercase font-bold">
