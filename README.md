@@ -5,7 +5,7 @@
 ![PocketBase](https://img.shields.io/badge/PocketBase-0.26-orange?style=flat-square&logo=pocketbase&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.0-38bdf8?style=flat-square&logo=tailwindcss&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-61dafb?style=flat-square&logo=react&logoColor=black)
-![Status](https://img.shields.io/website?url=https%3A%2F%2Fpangohub.fjelldata.com&style=flat-square&label=PangoHub)
+![Status](https://img.shields.io/website?url=https%3A%2F%2Fpangohub.pangoconsulting.no&style=flat-square&label=PangoHub)
 
 PangoHub (formerly Talent Hub) is a comprehensive platform for managing consultants, projects, and departments. It serves as a centralized system for tracking consultant availability, skills, and project assignments, designed to streamline resource management and talent matching.
 
