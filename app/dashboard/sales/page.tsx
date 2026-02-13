@@ -10,17 +10,35 @@ export default function SalesPage() {
   const { t } = useLanguage();
   const [leads, setLeads] = useState<SalesLead[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-      const load = async () => {
-          const data = await getSalesLeads();
-          setLeads(data);
-          setLoading(false);
-      };
-      load();
+    const load = async () => {
+      try {
+        const data = await getSalesLeads();
+        setLeads(data);
+      } catch (err) {
+        console.error("Failed to load sales leads:", err);
+        setError("Failed to load sales leads. Please try again later.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
   }, []);
 
   if (loading) return <div className="p-8 text-center">{t.common.loading}</div>;
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <strong className="font-bold">Error: </strong>
+          <span className="block sm:inline">{error}</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
