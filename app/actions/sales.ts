@@ -439,7 +439,7 @@ export async function getSuggestedTeam(projectId: string): Promise<TeamSlot[]> {
     const month = project.start_date ? project.start_date.substring(0, 7) : new Date().toISOString().substring(0, 7);
     const users = await pb.collection("users").getFullList<User>();
     const userSkills = await pb.collection("profile_skills").getFullList<ProfileSkill>({ expand: "skill" });
-    const userDepts = await pb.collection("profile_departments").getFullList({ expand: "department" });
+    const userDepts = await pb.collection("profile_departments").getFullList<ProfileDepartment>({ expand: "department" });
     const availRecords = await pb.collection("availability_months").getFullList<AvailabilityMonth>({
         filter: `month ~ "${month}"`
     });
@@ -485,6 +485,7 @@ export async function getSuggestedTeam(projectId: string): Promise<TeamSlot[]> {
                 if (bestCandidate) {
                     const avail = availRecords.find(a => a.user === bestCandidate!.id);
                     globalUsedUserIds.add(bestCandidate.id);
+                    const primaryDept = userDepts.filter(pd => pd.user === bestCandidate!.id).find(pd => pd.is_primary) || userDepts.find(pd => pd.user === bestCandidate!.id);
                     slotMembers.push({
                         consultant: {
                             id: bestCandidate.id,
@@ -497,7 +498,7 @@ export async function getSuggestedTeam(projectId: string): Promise<TeamSlot[]> {
                             created_at: bestCandidate.created, updated_at: bestCandidate.updated,
                             availability_status: (avail?.status as any) || "available",
                             experience_years: null,
-                            primary_department: "Mixed"
+                            primary_department: (primaryDept?.expand?.department as Department)?.name || "Mixed"
                         },
                         coveredSkills: bestCovered,
                         matchScore: Math.round(bestScore)
@@ -552,6 +553,7 @@ export async function getSuggestedTeam(projectId: string): Promise<TeamSlot[]> {
                 if (bestCandidate) {
                     const avail = availRecords.find(a => a.user === bestCandidate!.id);
                     globalUsedUserIds.add(bestCandidate.id);
+                    const primaryDept = userDepts.filter(pd => pd.user === bestCandidate!.id).find(pd => pd.is_primary) || userDepts.find(pd => pd.user === bestCandidate!.id);
                     slotMembers.push({
                         consultant: {
                             id: bestCandidate.id,
@@ -564,7 +566,7 @@ export async function getSuggestedTeam(projectId: string): Promise<TeamSlot[]> {
                             created_at: bestCandidate.created, updated_at: bestCandidate.updated,
                             availability_status: (avail?.status as any) || "available",
                             experience_years: null,
-                            primary_department: deptName
+                            primary_department: (primaryDept?.expand?.department as Department)?.name || deptName
                         },
                         coveredSkills: bestCovered,
                         matchScore: Math.round(bestScore)
@@ -623,6 +625,7 @@ export async function getSuggestedTeam(projectId: string): Promise<TeamSlot[]> {
             if (bestCandidate) {
                 const avail = availRecords.find(a => a.user === bestCandidate!.id);
                 globalUsedUserIds.add(bestCandidate.id);
+                const primaryDept = userDepts.filter(pd => pd.user === bestCandidate!.id).find(pd => pd.is_primary) || userDepts.find(pd => pd.user === bestCandidate!.id);
                 slotMembers.push({
                     consultant: {
                         id: bestCandidate.id,
@@ -635,7 +638,7 @@ export async function getSuggestedTeam(projectId: string): Promise<TeamSlot[]> {
                         created_at: bestCandidate.created, updated_at: bestCandidate.updated,
                         availability_status: (avail?.status as any) || "available",
                         experience_years: null,
-                        primary_department: deptReq.name
+                        primary_department: (primaryDept?.expand?.department as Department)?.name || deptReq.name
                     },
                     coveredSkills: bestCovered,
                     matchScore: Math.round(bestScore)
