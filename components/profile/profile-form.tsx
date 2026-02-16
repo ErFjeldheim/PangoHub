@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { updateMyProfileAction } from "@/app/actions/profile";
 import { SubmitButton } from "@/components/profile/SubmitButton";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
@@ -13,6 +14,13 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -28,7 +36,6 @@ import {
   FileText,
 } from "lucide-react";
 
-// These are client components in your repo — fine to import into a server component
 import { SkillsManager } from "./SkillsManager";
 import { ExperienceManager } from "./ExperienceManager";
 import { EducationManager } from "./EducationManager";
@@ -40,14 +47,53 @@ interface ProfileFormProps {
   availabilityContent: React.ReactNode;
   initialExperiences: Experience[];
   initialEducations: Education[];
+  departments: Array<{ id: string; name: string }>;
+  primaryDepartment: { id: string; name: string } | null;
 }
 
-/**
- * Server component: renders client children where needed.
- * No "use client" here — this keeps the tree server-first.
- */
-export function ProfileForm({ profile, availabilityContent, initialExperiences, initialEducations }: ProfileFormProps) {
+export function ProfileForm({
+  profile,
+  availabilityContent,
+  initialExperiences,
+  initialEducations,
+  departments,
+  primaryDepartment,
+}: ProfileFormProps) {
   const { t } = useLanguage();
+  const [formValues, setFormValues] = useState({
+    first_name: profile.first_name ?? "",
+    last_name: profile.last_name ?? "",
+    title: profile.title ?? "",
+    bio: profile.bio ?? "",
+    phone: profile.phone ?? "",
+    location: profile.location ?? "",
+    linkedin_url: profile.linkedin_url ?? "",
+    github_url: profile.github_url ?? "",
+    portfolio_url: profile.portfolio_url ?? "",
+  });
+  const [departmentId, setDepartmentId] = useState<string | null>(
+    primaryDepartment?.id ?? null
+  );
+
+  useEffect(() => {
+    setFormValues({
+      first_name: profile.first_name ?? "",
+      last_name: profile.last_name ?? "",
+      title: profile.title ?? "",
+      bio: profile.bio ?? "",
+      phone: profile.phone ?? "",
+      location: profile.location ?? "",
+      linkedin_url: profile.linkedin_url ?? "",
+      github_url: profile.github_url ?? "",
+      portfolio_url: profile.portfolio_url ?? "",
+    });
+    setDepartmentId(primaryDepartment?.id ?? null);
+  }, [profile.id, primaryDepartment?.id]);
+
+  const updateField = (field: keyof typeof formValues) =>
+    (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      setFormValues((prev) => ({ ...prev, [field]: event.target.value }));
+    };
 
   return (
     <div className="space-y-6">
@@ -87,9 +133,7 @@ export function ProfileForm({ profile, availabilityContent, initialExperiences, 
                   </div>
                   <div>
                     <CardTitle className="text-xl">{t.profile.basic.title}</CardTitle>
-                    <CardDescription>
-                      {t.profile.basic.desc}
-                    </CardDescription>
+                    <CardDescription>{t.profile.basic.desc}</CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -106,7 +150,8 @@ export function ProfileForm({ profile, availabilityContent, initialExperiences, 
                     <Input
                       id="first_name"
                       name="first_name"
-                      defaultValue={profile.first_name ?? ""}
+                      value={formValues.first_name}
+                      onChange={updateField("first_name")}
                       required
                       className="h-11"
                       placeholder="John"
@@ -123,7 +168,8 @@ export function ProfileForm({ profile, availabilityContent, initialExperiences, 
                     <Input
                       id="last_name"
                       name="last_name"
-                      defaultValue={profile.last_name ?? ""}
+                      value={formValues.last_name}
+                      onChange={updateField("last_name")}
                       required
                       className="h-11"
                       placeholder="Doe"
@@ -143,9 +189,39 @@ export function ProfileForm({ profile, availabilityContent, initialExperiences, 
                     id="title"
                     name="title"
                     placeholder="e.g., Senior Software Engineer"
-                    defaultValue={profile.title ?? ""}
+                    value={formValues.title}
+                    onChange={updateField("title")}
                     className="h-11"
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="department_id"
+                    className="flex items-center gap-2 text-sm font-medium"
+                  >
+                    <Briefcase className="w-4 h-4 text-muted-foreground" />
+                    {t.profile.basic.department}
+                  </Label>
+                  <input type="hidden" name="department_id" value={departmentId ?? ""} />
+                  <Select
+                    value={departmentId ?? "none"}
+                    onValueChange={(value) =>
+                      setDepartmentId(value === "none" ? null : value)
+                    }
+                  >
+                    <SelectTrigger className="w-full h-11">
+                      <SelectValue placeholder={t.profile.basic.departmentPlaceholder} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">{t.profile.basic.departmentNone}</SelectItem>
+                      {departments.map((dept) => (
+                        <SelectItem key={dept.id} value={dept.id}>
+                          {dept.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
@@ -160,7 +236,8 @@ export function ProfileForm({ profile, availabilityContent, initialExperiences, 
                     id="bio"
                     name="bio"
                     placeholder={t.profile.basic.bioPlaceholder}
-                    defaultValue={profile.bio ?? ""}
+                    value={formValues.bio}
+                    onChange={updateField("bio")}
                     rows={5}
                     className="resize-none"
                   />
@@ -200,7 +277,8 @@ export function ProfileForm({ profile, availabilityContent, initialExperiences, 
                       name="phone"
                       type="tel"
                       placeholder="95323456"
-                      defaultValue={profile.phone ?? ""}
+                      value={formValues.phone}
+                      onChange={updateField("phone")}
                       className="h-11"
                     />
                   </div>
@@ -216,7 +294,8 @@ export function ProfileForm({ profile, availabilityContent, initialExperiences, 
                       id="location"
                       name="location"
                       placeholder="Trondheim, Norway"
-                      defaultValue={profile.location ?? ""}
+                      value={formValues.location}
+                      onChange={updateField("location")}
                       className="h-11"
                     />
                   </div>
@@ -236,7 +315,8 @@ export function ProfileForm({ profile, availabilityContent, initialExperiences, 
                       name="linkedin_url"
                       type="url"
                       placeholder="https://linkedin.com/in/yourprofile"
-                      defaultValue={profile.linkedin_url ?? ""}
+                      value={formValues.linkedin_url}
+                      onChange={updateField("linkedin_url")}
                       className="h-11"
                     />
                   </div>
@@ -254,7 +334,8 @@ export function ProfileForm({ profile, availabilityContent, initialExperiences, 
                       name="github_url"
                       type="url"
                       placeholder="https://github.com/yourusername"
-                      defaultValue={profile.github_url ?? ""}
+                      value={formValues.github_url}
+                      onChange={updateField("github_url")}
                       className="h-11"
                     />
                   </div>
@@ -272,7 +353,8 @@ export function ProfileForm({ profile, availabilityContent, initialExperiences, 
                       name="portfolio_url"
                       type="url"
                       placeholder="https://yourportfolio.com"
-                      defaultValue={profile.portfolio_url ?? ""}
+                      value={formValues.portfolio_url}
+                      onChange={updateField("portfolio_url")}
                       className="h-11"
                     />
                   </div>
@@ -332,7 +414,7 @@ export function ProfileForm({ profile, availabilityContent, initialExperiences, 
           </Card>
         </TabsContent>
 
-        {/* AVAILABILITY (server wrapper + client inner) */}
+        {/* AVAILABILITY */}
         <TabsContent value="availability" className="space-y-6 mt-6">
           {availabilityContent}
         </TabsContent>

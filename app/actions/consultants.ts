@@ -144,6 +144,49 @@ export async function getSkills(consultantId: string): Promise<Skill[]> {
   });
 }
 
+export async function getConsultantsBySkill(
+    skillId: string
+): Promise<Array<{ consultant: Consultant; proficiency: number; years: number }>> {
+  const pb = await createServerClient();
+
+    const records = await pb.collection("profile_skills").getFullList<ProfileSkill>({
+            filter: `skill="${skillId}"`,
+            expand: 'user',
+            sort: '-proficiency'
+    });
+
+  const currentMonth = new Date().toISOString().substring(0, 7);
+  let availabilityMap = new Map<string, string>();
+  try {
+      const availRecords = await pb.collection("availability_months").getFullList<AvailabilityMonth>({
+          filter: `month ~ "${currentMonth}"`
+      });
+      availRecords.forEach(r => {
+          const status = r.status || calculateStatus(r.hours_available || 0, r.hours_committed || 0);
+          availabilityMap.set(r.user, status);
+      });
+  } catch (e) {
+      console.error("Failed to fetch availability for skill list:", e);
+  }
+
+  const entries = records.map(r => {
+      const user = r.expand?.user as User | undefined;
+      if (!user) return null;
+      return {
+          consultant: mapUserToConsultant(user, undefined, availabilityMap.get(user.id)),
+          proficiency: r.proficiency || 0,
+          years: r.years || 0,
+      };
+  }).filter((entry): entry is { consultant: Consultant; proficiency: number; years: number } => entry !== null);
+
+  entries.sort((a, b) => {
+      if (b.proficiency !== a.proficiency) return b.proficiency - a.proficiency;
+      return a.consultant.display_name.localeCompare(b.consultant.display_name);
+  });
+
+  return entries;
+}
+
 export async function getExperiences(consultantId: string): Promise<ExperienceRow[]> {
   const pb = await createServerClient();
   const records = await pb.collection("experiences").getFullList<Experience>({

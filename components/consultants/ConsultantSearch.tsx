@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { Consultant, AvailabilityStatus } from "@/types/consultant";
 import { Search, Loader2, User as UserIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -15,13 +16,20 @@ export default function ConsultantSearch() {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const boxRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLDivElement | null>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
   const { t } = useLanguage();
+  const [dropdownStyle, setDropdownStyle] = useState<
+    { top: number; left: number; width: number } | null
+  >(null);
 
   // close dropdown on outside click
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
-      if (!boxRef.current) return;
-      if (!boxRef.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (boxRef.current?.contains(target)) return;
+      if (dropdownRef.current?.contains(target)) return;
+      setOpen(false);
     };
     window.addEventListener("mousedown", onClick);
     return () => window.removeEventListener("mousedown", onClick);
@@ -38,15 +46,15 @@ export default function ConsultantSearch() {
 
       setLoading(true);
       try {
-          const data = await searchConsultants(q);
-          setResults(data);
-          setOpen(true);
+        const data = await searchConsultants(q);
+        setResults(data);
+        setOpen(true);
       } catch (error) {
-          console.error(error);
-          setResults([]);
-          setOpen(false);
+        console.error(error);
+        setResults([]);
+        setOpen(false);
       } finally {
-          setLoading(false);
+        setLoading(false);
       }
     }, 250);
 
@@ -55,8 +63,30 @@ export default function ConsultantSearch() {
     };
   }, [query]);
 
+  useEffect(() => {
+    if (!open || !inputRef.current) return;
+
+    const updatePosition = () => {
+      const rect = inputRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setDropdownStyle({
+        top: rect.bottom + 8,
+        left: rect.left,
+        width: rect.width,
+      });
+    };
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [open, results.length, loading]);
+
   const getAvailabilityConfig = (
-    status: AvailabilityStatus | null | undefined
+    status: AvailabilityStatus | null | undefined,
   ) => {
     switch (status) {
       case "available":
@@ -91,7 +121,7 @@ export default function ConsultantSearch() {
 
   return (
     <div ref={boxRef} className="relative w-full max-w-md">
-      <div className="relative">
+      <div ref={inputRef} className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           id="consultant-search"
@@ -108,17 +138,26 @@ export default function ConsultantSearch() {
       </div>
 
       {/* Floating dropdown */}
-      {open && (
-        <div
-          className="absolute left-0 right-0 z-50 mt-2 rounded-lg border bg-card/95 backdrop-blur-md shadow-xl
+      {open &&
+        dropdownStyle &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            ref={dropdownRef}
+            className="fixed z-[9999] rounded-lg border border-border bg-card shadow-xl
                      animate-in fade-in-0 zoom-in-95 slide-in-from-top-2 duration-200"
-        >
+            style={{
+              top: dropdownStyle.top,
+              left: dropdownStyle.left,
+              width: dropdownStyle.width,
+            }}
+          >
           {!loading && results.length > 0 && (
             <div className="max-h-[400px] overflow-auto">
               <div className="p-2 space-y-1">
                 {results.map((c) => {
                   const availConfig = getAvailabilityConfig(
-                    c.availability_status
+                    c.availability_status,
                   );
                   const name = c.display_name || "Unnamed";
 
@@ -127,6 +166,10 @@ export default function ConsultantSearch() {
                       key={c.id}
                       href={`/dashboard/consultants/${c.id}`}
                       className="block"
+                      onClick={() => {
+                        setQuery("");
+                        setOpen(false);
+                      }}
                     >
                       <div
                         className="w-full px-3 py-3 rounded-md hover:bg-accent/50 transition-colors
@@ -186,8 +229,9 @@ export default function ConsultantSearch() {
               </p>
             </div>
           )}
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

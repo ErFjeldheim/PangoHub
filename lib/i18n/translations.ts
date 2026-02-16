@@ -29,6 +29,7 @@ export const translations = {
       member: "Medlem",
       seller: "Selger",
       sales: "Salg & Leads",
+      skills: "Ferdigheter",
     },
     header: {
       searchPlaceholder: "Søk etter konsulenter...",
@@ -41,7 +42,8 @@ export const translations = {
       title: "Min Profil",
       subtitle: "Administrer din konsulentprofil og informasjon",
       completionTip: "Fullfør profilen din for å skille deg ut",
-      completionDesc: "En komplett profil hjelper kunder med å finne deg og øker sjansene for spennende prosjekter.",
+      completionDesc:
+        "En komplett profil hjelper kunder med å finne deg og øker sjansene for spennende prosjekter.",
       tabs: {
         basic: "Info & Kontakt",
         professional: "Faglig",
@@ -53,9 +55,14 @@ export const translations = {
         firstName: "Fornavn",
         lastName: "Etternavn",
         jobTitle: "Stillingstittel",
+        department: "Avdeling",
+        departmentPlaceholder: "Velg avdeling",
+        departmentNone: "Ingen avdeling",
         bio: "Biografi",
-        bioPlaceholder: "Fortell om deg selv, din ekspertise og hva du brenner for...",
-        bioHint: "Del din bakgrunn, ferdigheter og hva som gjør deg unik som konsulent.",
+        bioPlaceholder:
+          "Fortell om deg selv, din ekspertise og hva du brenner for...",
+        bioHint:
+          "Del din bakgrunn, ferdigheter og hva som gjør deg unik som konsulent.",
       },
       contact: {
         title: "Kontaktinformasjon",
@@ -115,7 +122,8 @@ export const translations = {
     },
     dashboard: {
       welcome: "Velkommen tilbake, {name}",
-      subtitle: "Hold profilen din oppdatert og registrer tilgjengelighet for å bli bemannet raskere.",
+      subtitle:
+        "Hold profilen din oppdatert og registrer tilgjengelighet for å bli bemannet raskere.",
       completeness: "Profilfullføring",
       complete: "Profilen din er fullført! Bra jobba.",
       incomplete: "Fyll ut bio, tittel og ferdigheter for å nå 100%",
@@ -126,11 +134,15 @@ export const translations = {
       availabilitySubtitle: "Kapasitetsoversikt for kommende måneder",
       activeProjects: "Mine aktive prosjekter",
       activeProjectsSubtitle: "{count} {project} pågår",
-      noActiveProjects: "Ingen aktive prosjekter akkurat nå. Sjekk ut mulighetene under!",
-      noAvailability: "Ingen tilgjengelighet satt ennå. Oppdater kalenderen din for å bli matchet med prosjekter.",
+      noActiveProjects:
+        "Ingen aktive prosjekter akkurat nå. Sjekk ut mulighetene under!",
+      noAvailability:
+        "Ingen tilgjengelighet satt ennå. Oppdater kalenderen din for å bli matchet med prosjekter.",
       opportunities: "Muligheter du kanskje liker",
-      opportunitiesSubtitle: "Prosjekter som matcher dine ferdigheter og tilgjengelighet",
-      noOpportunities: "Ingen åpne prosjekter å vise for øyeblikket. Sjekk innom snart!",
+      opportunitiesSubtitle:
+        "Prosjekter som matcher dine ferdigheter og tilgjengelighet",
+      noOpportunities:
+        "Ingen åpne prosjekter å vise for øyeblikket. Sjekk innom snart!",
       department: "Min avdeling — {name}",
       departmentSubtitle: "Bla gjennom kolleger og deres tilgjengelighet",
       browseColleagues: "Bla gjennom kolleger",
@@ -148,7 +160,8 @@ export const translations = {
       title: "Konsulenter",
       subtitle: "Bla gjennom og søk etter konsulenter i hele organisasjonen",
       filter: "Filtrer etter avdeling",
-      searchPlaceholder: "Søk etter konsulenter etter navn, ferdighet eller prosjekt...",
+      searchPlaceholder:
+        "Søk etter konsulenter etter navn, ferdighet eller prosjekt...",
       invite: "Inviter konsulent",
       loading: "Laster konsulenter...",
       viewProfile: "Se profil",
@@ -156,6 +169,26 @@ export const translations = {
       sendEmail: "Send e-post",
       callPhone: "Ring",
       viewLinkedIn: "Se LinkedIn",
+      skillsTitle: "Ferdigheter",
+      skillsSubtitle: "Bla gjennom ferdigheter i konsulentnettverket",
+      skillsFound: "{count} ferdigheter funnet",
+      orderBy: "Sorter etter",
+      orderAlpha: "Alfabetisk (A-Z)",
+      orderCount: "Konsulenter (høy-lav)",
+      skillsDirectory: "Ferdighetsoversikt",
+      skillsEmpty: "Ingen ferdigheter er lagt til ennå.",
+      skillConsultantsTitle: "Konsulenter",
+      skillConsultantsCount: "{count} konsulenter med denne ferdigheten",
+      skillNoConsultants:
+        "Ingen konsulenter er tilknyttet denne ferdigheten ennå.",
+      backToSkills: "Tilbake til ferdigheter",
+      skillNotFound: "Ferdigheten finnes ikke.",
+      columnSkill: "Ferdighet",
+      columnConsultants: "Konsulenter",
+      columnTitle: "Stilling",
+      columnLevel: "Niva",
+      columnAvailability: "Tilgjengelighet",
+      columnProfile: "Profil",
     },
     consultantProfile: {
       yearsExperience: "~{years} års erfaring",
@@ -199,23 +232,29 @@ export const translations = {
       role: "Rolleinformasjon",
       roleSubtitle: "Din nåværende rolle og tillatelser",
       currentRole: "Nåværende rolle:",
-      adminDesc: "Du har full tilgang til å administrere konsulenter, sende invitasjoner og se analyse.",
-      memberDesc: "Du kan administrere din profil og se andre konsulenter i nettverket.",
+      adminDesc:
+        "Du har full tilgang til å administrere konsulenter, sende invitasjoner og se analyse.",
+      memberDesc:
+        "Du kan administrere din profil og se andre konsulenter i nettverket.",
       dangerZone: "Faresone",
       dangerZoneSubtitle: "Handlinger som ikke kan angres",
       deleteAccount: "Slett konto",
-      confirmDelete: "Er du sikker på at du vil slette kontoen din? Denne handlingen kan ikke angres.",
+      confirmDelete:
+        "Er du sikker på at du vil slette kontoen din? Denne handlingen kan ikke angres.",
       messages: {
         emailRequested: "E-postoppdatering forespurt!",
-        emailRequestedDesc: "Vennligst sjekk din nye e-post for å bekrefte endringen.",
+        emailRequestedDesc:
+          "Vennligst sjekk din nye e-post for å bekrefte endringen.",
         passwordResetSent: "Passordgjenoppretting sendt!",
-        passwordResetDesc: "Sjekk e-posten din for instruksjoner om tilbakestilling av passord.",
+        passwordResetDesc:
+          "Sjekk e-posten din for instruksjoner om tilbakestilling av passord.",
         accountDeleted: "Konto slettet",
       },
     },
     sales: {
       title: "Salg & Ressursplanlegging",
-      subtitle: "Opprett test-prosjekter for å evaluere tilgjengelighet og ferdigheter hos konsulenter.",
+      subtitle:
+        "Opprett test-prosjekter for å evaluere tilgjengelighet og ferdigheter hos konsulenter.",
       newLead: "Nytt Salgslead",
       createLeadTitle: "Opprett Salgslead (Test-prosjekt)",
       editLeadTitle: "Rediger {name}",
@@ -246,13 +285,15 @@ export const translations = {
       },
       list: {
         noLeads: "Ingen salgsleads",
-        noLeadsDesc: "Opprett et test-prosjekt for å begynne å matche konsulenter.",
+        noLeadsDesc:
+          "Opprett et test-prosjekt for å begynne å matche konsulenter.",
         mockBadge: "Test-prosjekt",
         estHours: "Estimert tid",
         estPrice: "Estimert pris",
         exclVat: "Ekskl. mva",
         resourcePool: "Tilgjengelige ressurser",
-        confirmDelete: "Er du sikker på at du vil slette dette test-prosjektet?",
+        confirmDelete:
+          "Er du sikker på at du vil slette dette test-prosjektet?",
       },
       team: {
         title: "Foreslått Team",
@@ -260,7 +301,8 @@ export const translations = {
         ghostTitle: "Ghost (Mangler kompetanse)",
         remainingSkills: "Gjenstående ferdigheter",
         requiredSkills: "Påkrevde ferdigheter",
-        noSuggestions: "Ingen teamforslag tilgjengelig. Prøv å legge til ferdigheter eller avdelinger.",
+        noSuggestions:
+          "Ingen teamforslag tilgjengelig. Prøv å legge til ferdigheter eller avdelinger.",
       },
       matcher: {
         loading: "Finner beste matcher...",
@@ -299,6 +341,7 @@ export const translations = {
       member: "Member",
       seller: "Seller",
       sales: "Sales & Leads",
+      skills: "Skills",
     },
     header: {
       searchPlaceholder: "Search consultants...",
@@ -311,7 +354,8 @@ export const translations = {
       title: "My Profile",
       subtitle: "Manage your consultant profile and information",
       completionTip: "Complete your profile to stand out",
-      completionDesc: "A complete profile helps clients find you and increases your chances of landing great projects.",
+      completionDesc:
+        "A complete profile helps clients find you and increases your chances of landing great projects.",
       tabs: {
         basic: "Basic & Contact",
         professional: "Professional",
@@ -323,9 +367,14 @@ export const translations = {
         firstName: "First Name",
         lastName: "Last Name",
         jobTitle: "Job Title",
+        department: "Department",
+        departmentPlaceholder: "Select department",
+        departmentNone: "No department",
         bio: "Bio",
-        bioPlaceholder: "Tell us about yourself, your expertise, and what you're passionate about...",
-        bioHint: "Share your background, skills, and what makes you unique as a consultant.",
+        bioPlaceholder:
+          "Tell us about yourself, your expertise, and what you're passionate about...",
+        bioHint:
+          "Share your background, skills, and what makes you unique as a consultant.",
       },
       contact: {
         title: "Contact Information",
@@ -363,7 +412,8 @@ export const translations = {
         available: "Available",
         utilization: "Utilization",
         notes: "Notes",
-        notesPlaceholder: "Optional: context, planned vacations, assignments, etc.",
+        notesPlaceholder:
+          "Optional: context, planned vacations, assignments, etc.",
         hoursAvailable: "Hours Available",
         saveMonth: "Save month",
       },
@@ -385,7 +435,8 @@ export const translations = {
     },
     dashboard: {
       welcome: "Welcome back, {name}",
-      subtitle: "Keep your profile up to date and mark availability to get staffed faster.",
+      subtitle:
+        "Keep your profile up to date and mark availability to get staffed faster.",
       completeness: "Profile Completeness",
       complete: "Your profile is complete! Great job.",
       incomplete: "Fill in bio, title and skills to reach 100%",
@@ -396,11 +447,14 @@ export const translations = {
       availabilitySubtitle: "Upcoming months capacity overview",
       activeProjects: "My Active Projects",
       activeProjectsSubtitle: "{count} {project} in progress",
-      noActiveProjects: "No active projects right now. Check out opportunities below!",
-      noAvailability: "No availability set yet. Update your calendar to get matched with projects.",
+      noActiveProjects:
+        "No active projects right now. Check out opportunities below!",
+      noAvailability:
+        "No availability set yet. Update your calendar to get matched with projects.",
       opportunities: "Opportunities You Might Like",
       opportunitiesSubtitle: "Projects matching your skills and availability",
-      noOpportunities: "No open projects to show at the moment. Check back soon!",
+      noOpportunities:
+        "No open projects to show at the moment. Check back soon!",
       department: "My Department — {name}",
       departmentSubtitle: "Browse colleagues and their availability",
       browseColleagues: "Browse Colleagues",
@@ -426,6 +480,25 @@ export const translations = {
       sendEmail: "Send email",
       callPhone: "Call phone",
       viewLinkedIn: "View LinkedIn",
+      skillsTitle: "Skills",
+      skillsSubtitle: "Browse skills across the consultant network",
+      skillsFound: "{count} skills found",
+      orderBy: "Order by",
+      orderAlpha: "Alphabetical (A-Z)",
+      orderCount: "Consultants (high-low)",
+      skillsDirectory: "Skills directory",
+      skillsEmpty: "No skills have been added yet.",
+      skillConsultantsTitle: "Consultants",
+      skillConsultantsCount: "{count} consultant{suffix} with this skill",
+      skillNoConsultants: "No consultants are associated with this skill yet.",
+      backToSkills: "Back to skills",
+      skillNotFound: "Skill not found.",
+      columnSkill: "Skill",
+      columnConsultants: "Consultants",
+      columnTitle: "Title",
+      columnLevel: "Level",
+      columnAvailability: "Availability",
+      columnProfile: "Profile",
     },
     consultantProfile: {
       yearsExperience: "~{years} yrs experience",
@@ -469,15 +542,19 @@ export const translations = {
       role: "Role Information",
       roleSubtitle: "Your current role and permissions",
       currentRole: "Current Role:",
-      adminDesc: "You have full access to manage consultants, send invitations, and view analytics.",
-      memberDesc: "You can manage your profile and view other consultants in the network.",
+      adminDesc:
+        "You have full access to manage consultants, send invitations, and view analytics.",
+      memberDesc:
+        "You can manage your profile and view other consultants in the network.",
       dangerZone: "Danger Zone",
       dangerZoneSubtitle: "Irreversible and destructive actions",
       deleteAccount: "Delete Account",
-      confirmDelete: "Are you sure you want to delete your account? This action cannot be undone.",
+      confirmDelete:
+        "Are you sure you want to delete your account? This action cannot be undone.",
       messages: {
         emailRequested: "Email update requested!",
-        emailRequestedDesc: "Please check your new email to confirm the change.",
+        emailRequestedDesc:
+          "Please check your new email to confirm the change.",
         passwordResetSent: "Password reset sent!",
         passwordResetDesc: "Check your email for password reset instructions.",
         accountDeleted: "Account deleted",
@@ -485,7 +562,8 @@ export const translations = {
     },
     sales: {
       title: "Sales & Resource Planning",
-      subtitle: "Create mock projects to evaluate consultant availability and skills.",
+      subtitle:
+        "Create mock projects to evaluate consultant availability and skills.",
       newLead: "New Sales Lead",
       createLeadTitle: "Create Sales Lead (Mock Project)",
       editLeadTitle: "Edit {name}",
@@ -507,7 +585,8 @@ export const translations = {
         estimatedHours: "Estimated Hours",
         estimatedPrice: "Estimated Price (excl. VAT)",
         templateBadge: "Template: {name}",
-        templateHint: "Departments and required skills will be automatically assigned.",
+        templateHint:
+          "Departments and required skills will be automatically assigned.",
         back: "Back",
         creating: "Creating...",
         create: "Create Lead",
@@ -530,7 +609,8 @@ export const translations = {
         ghostTitle: "Ghost (Missing Talent)",
         remainingSkills: "Remaining Unfilled Skills",
         requiredSkills: "Required Skills",
-        noSuggestions: "No team suggestions available. Try adding required skills or departments to the project.",
+        noSuggestions:
+          "No team suggestions available. Try adding required skills or departments to the project.",
       },
       matcher: {
         loading: "Finding best matches...",

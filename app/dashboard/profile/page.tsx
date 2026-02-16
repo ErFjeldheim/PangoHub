@@ -5,7 +5,8 @@ import { ErrorDisplay } from "@/components/error-display";
 import { ProfileHeader } from "@/components/profile/ProfileHeader";
 import { getAvailabilityNextSixMonths, upsertAvailabilityMonthAndNotesAction } from "@/app/actions/availability";
 import { AvailabilityManagerClient } from "@/components/availability/AvailabilityManagerClient";
-import { getExperiences, getEducations } from "@/app/actions/profile";
+import { getExperiences, getEducations, getPrimaryDepartment } from "@/app/actions/profile";
+import { getAllDepartmentsBasic } from "@/app/actions/departments";
 
 export default async function ProfilePage() {
   await requireAuth();
@@ -21,10 +22,12 @@ export default async function ProfilePage() {
   }
 
   // Fetch all data in parallel
-  const [availability, experiences, educations] = await Promise.all([
+  const [availability, experiences, educations, departments, primaryDepartment] = await Promise.all([
     getAvailabilityNextSixMonths(profile.id),
     getExperiences(profile.id),
-    getEducations(profile.id)
+    getEducations(profile.id),
+    getAllDepartmentsBasic(),
+    getPrimaryDepartment(profile.id),
   ]);
 
   const availabilityContent = (
@@ -43,6 +46,8 @@ export default async function ProfilePage() {
         availabilityContent={availabilityContent}
         initialExperiences={experiences}
         initialEducations={educations}
+        departments={departments}
+        primaryDepartment={primaryDepartment}
       />
     </div>
   );

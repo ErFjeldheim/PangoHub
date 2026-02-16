@@ -15,6 +15,12 @@ export interface ProfileSkillPublic {
   proficiency: number;
 }
 
+export interface SkillWithCount {
+  id: string;
+  name: string;
+  consultantCount: number;
+}
+
 export type Skill = SkillPublic;
 export type ProfileSkill = ProfileSkillPublic;
 
@@ -29,6 +35,56 @@ export async function getAllSkills(): Promise<SkillPublic[]> {
   } catch (err) {
       const e = err as Error;
       throw new Error(e.message);
+  }
+}
+
+export async function getSkillsWithCounts(): Promise<SkillWithCount[]> {
+  const pb = await createServerClient();
+
+  try {
+    const records = await pb.collection("profile_skills").getFullList<PBProfileSkill>({
+      expand: 'skill',
+      fields: 'id,user,skill,expand.skill.name'
+    });
+
+    const buckets = new Map<string, { name: string; users: Set<string> }>();
+
+    records.forEach(r => {
+      const skillId = r.skill;
+      const userId = r.user;
+      const name = (r.expand?.skill as PBSkill | undefined)?.name?.trim();
+      if (!skillId || !userId || !name) return;
+
+      const existing = buckets.get(skillId);
+      if (existing) {
+        existing.users.add(userId);
+        return;
+      }
+
+      buckets.set(skillId, { name, users: new Set([userId]) });
+    });
+
+    return Array.from(buckets.entries()).map(([id, entry]) => ({
+      id,
+      name: entry.name,
+      consultantCount: entry.users.size,
+    }));
+  } catch (err) {
+    const e = err as Error;
+    throw new Error(e.message);
+  }
+}
+
+export async function getSkillById(skillId: string): Promise<SkillPublic | null> {
+  const pb = await createServerClient();
+
+  try {
+    const record = await pb.collection("skills").getOne<PBSkill>(skillId, {
+      fields: 'id,name'
+    });
+    return { id: record.id, name: record.name };
+  } catch {
+    return null;
   }
 }
 

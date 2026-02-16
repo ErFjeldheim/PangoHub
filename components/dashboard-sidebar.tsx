@@ -14,6 +14,7 @@ import {
   Building,
   Briefcase,
   BadgeDollarSign,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -32,7 +33,7 @@ interface SidebarContentProps {
 function getInitials(
   displayName?: string | null,
   first?: string | null,
-  last?: string | null
+  last?: string | null,
 ) {
   const name = (displayName ?? `${first ?? ""} ${last ?? ""}`).trim();
   const parts = name.split(/\s+/).filter(Boolean);
@@ -56,7 +57,8 @@ export function SidebarContent({
 
   const handleSignOut = async () => {
     pb.authStore.clear();
-    document.cookie = "pb_auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    document.cookie =
+      "pb_auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
     router.push("/auth/login");
   };
 
@@ -64,6 +66,11 @@ export function SidebarContent({
   const isSeller = profile.role === "seller";
   const isConsultant = profile.role === "consultant";
   const canAccessSales = isAdmin || isSeller || isConsultant;
+  const isConsultantsSkills = pathname.startsWith(
+    "/dashboard/consultants/skills",
+  );
+  const isConsultantsArea =
+    pathname.startsWith("/dashboard/consultants") && !isConsultantsSkills;
 
   const navBase = [
     {
@@ -82,7 +89,14 @@ export function SidebarContent({
       name: t.nav.consultants,
       href: "/dashboard/consultants",
       icon: Users,
-      current: pathname.startsWith("/dashboard/consultants"),
+      current: isConsultantsArea,
+    },
+    {
+      name: t.nav.skills,
+      href: "/dashboard/consultants/skills",
+      icon: Sparkles,
+      current: isConsultantsSkills,
+      isSubItem: false,
     },
     {
       name: t.nav.projects,
@@ -140,7 +154,7 @@ export function SidebarContent({
   const initials = getInitials(
     profile.display_name,
     profile.first_name,
-    profile.last_name
+    profile.last_name,
   );
   const fullName =
     profile.display_name ||
@@ -149,7 +163,12 @@ export function SidebarContent({
     "User";
 
   return (
-    <div className={cn("flex flex-col h-full bg-card border-r border-border", className)}>
+    <div
+      className={cn(
+        "flex flex-col h-full bg-card border-r border-border",
+        className,
+      )}
+    >
       <div className="flex items-center h-16 px-6 border-b border-border">
         <div className="relative h-10 w-10 rounded-md overflow-hidden shrink-0">
           <Image
@@ -170,10 +189,16 @@ export function SidebarContent({
                 variant={item.current ? "secondary" : "ghost"}
                 className={cn(
                   "w-full justify-start",
-                  item.current && "bg-secondary text-secondary-foreground"
+                  item.isSubItem && "pl-10 text-sm",
+                  item.current && "bg-secondary text-secondary-foreground",
                 )}
               >
-                <Icon className="mr-3 h-4 w-4" />
+                <Icon
+                  className={cn(
+                    "mr-3 h-4 w-4",
+                    item.isSubItem && "h-3.5 w-3.5 text-muted-foreground",
+                  )}
+                />
                 {item.name}
               </Button>
             </Link>
