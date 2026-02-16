@@ -19,9 +19,11 @@ export default function ConsultantSearch() {
   const inputRef = useRef<HTMLDivElement | null>(null);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   const { t } = useLanguage();
-  const [dropdownStyle, setDropdownStyle] = useState<
-    { top: number; left: number; width: number } | null
-  >(null);
+  const [dropdownStyle, setDropdownStyle] = useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
 
   // close dropdown on outside click
   useEffect(() => {
@@ -152,85 +154,85 @@ export default function ConsultantSearch() {
               width: dropdownStyle.width,
             }}
           >
-          {!loading && results.length > 0 && (
-            <div className="max-h-[400px] overflow-auto">
-              <div className="p-2 space-y-1">
-                {results.map((c) => {
-                  const availConfig = getAvailabilityConfig(
-                    c.availability_status,
-                  );
-                  const name = c.display_name || "Unnamed";
+            {!loading && results.length > 0 && (
+              <div className="max-h-[400px] overflow-auto">
+                <div className="p-2 space-y-1">
+                  {results.map((c) => {
+                    const availConfig = getAvailabilityConfig(
+                      c.availability_status,
+                    );
+                    const name = c.display_name || "Unnamed";
 
-                  return (
-                    <Link
-                      key={c.id}
-                      href={`/dashboard/consultants/${c.id}`}
-                      className="block"
-                      onClick={() => {
-                        setQuery("");
-                        setOpen(false);
-                      }}
-                    >
-                      <div
-                        className="w-full px-3 py-3 rounded-md hover:bg-accent/50 transition-colors
-                                   focus:outline-none focus:bg-accent/50 group"
+                    return (
+                      <Link
+                        key={c.id}
+                        href={`/dashboard/consultants/${c.id}`}
+                        className="block"
+                        onClick={() => {
+                          setQuery("");
+                          setOpen(false);
+                        }}
                       >
-                        <div className="flex items-start gap-3">
-                          {/* Simple icon instead of avatar */}
-                          <div className="shrink-0 inline-flex items-center justify-center h-10 w-10 rounded-full bg-muted">
-                            <UserIcon className="h-5 w-5 text-muted-foreground" />
-                          </div>
-
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2 mb-1">
-                              <h4 className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors truncate">
-                                {name}
-                              </h4>
-                              <Badge
-                                variant={availConfig.variant}
-                                className={`text-xs shrink-0 ${availConfig.className}`}
-                              >
-                                {availConfig.label}
-                              </Badge>
+                        <div
+                          className="w-full px-3 py-3 rounded-md hover:bg-accent/50 transition-colors
+                                   focus:outline-none focus:bg-accent/50 group"
+                        >
+                          <div className="flex items-start gap-3">
+                            {/* Simple icon instead of avatar */}
+                            <div className="shrink-0 inline-flex items-center justify-center h-10 w-10 rounded-full bg-muted">
+                              <UserIcon className="h-5 w-5 text-muted-foreground" />
                             </div>
-                            {c.title && (
-                              <p className="text-xs text-muted-foreground truncate">
-                                {c.title}
-                              </p>
-                            )}
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <h4 className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors truncate">
+                                  {name}
+                                </h4>
+                                <Badge
+                                  variant={availConfig.variant}
+                                  className={`text-xs shrink-0 ${availConfig.className}`}
+                                >
+                                  {availConfig.label}
+                                </Badge>
+                              </div>
+                              {c.title && (
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {c.title}
+                                </p>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
+                      </Link>
+                    );
+                  })}
+                </div>
 
-              <div className="border-t px-3 py-2 bg-muted/30">
-                <p className="text-xs text-muted-foreground text-center">
-                  {t.header.showingResults
-                    .replace("{count}", String(results.length))
-                    .replace("{s}", results.length !== 1 ? "s" : "")}
+                <div className="border-t px-3 py-2 bg-muted/30">
+                  <p className="text-xs text-muted-foreground text-center">
+                    {t.header.showingResults
+                      .replace("{count}", String(results.length))
+                      .replace("{s}", results.length !== 1 ? "s" : "")}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {!loading && results.length === 0 && query && (
+              <div className="px-4 py-8 text-center">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-muted/50 mb-3">
+                  <UserIcon className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <p className="text-sm font-medium text-foreground mb-1">
+                  {t.header.noResults}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {t.header.tryAdjusting}
                 </p>
               </div>
-            </div>
-          )}
-
-          {!loading && results.length === 0 && query && (
-            <div className="px-4 py-8 text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-muted/50 mb-3">
-                <UserIcon className="h-6 w-6 text-muted-foreground" />
-              </div>
-              <p className="text-sm font-medium text-foreground mb-1">
-                {t.header.noResults}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {t.header.tryAdjusting}
-              </p>
-            </div>
-          )}
+            )}
           </div>,
-          document.body
+          document.body,
         )}
     </div>
   );

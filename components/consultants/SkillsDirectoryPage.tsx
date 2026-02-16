@@ -2,9 +2,16 @@
 
 import { BookOpen } from "lucide-react";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
-import { SkillsDirectory, type SkillDirectoryItem } from "@/components/consultants/SkillsDirectory";
+import {
+  SkillsDirectory,
+  type SkillDirectoryItem,
+} from "@/components/consultants/SkillsDirectory";
 
-export function SkillsDirectoryPage({ skills }: { skills: SkillDirectoryItem[] }) {
+export function SkillsDirectoryPage({
+  skills,
+}: {
+  skills: SkillDirectoryItem[];
+}) {
   const { t } = useLanguage();
 
   return (

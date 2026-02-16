@@ -72,7 +72,7 @@ export function ProfileForm({
     portfolio_url: profile.portfolio_url ?? "",
   });
   const [departmentId, setDepartmentId] = useState<string | null>(
-    primaryDepartment?.id ?? null
+    primaryDepartment?.id ?? null,
   );
 
   useEffect(() => {
@@ -90,7 +90,8 @@ export function ProfileForm({
     setDepartmentId(primaryDepartment?.id ?? null);
   }, [profile.id, primaryDepartment?.id]);
 
-  const updateField = (field: keyof typeof formValues) =>
+  const updateField =
+    (field: keyof typeof formValues) =>
     (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       setFormValues((prev) => ({ ...prev, [field]: event.target.value }));
     };
@@ -109,7 +110,9 @@ export function ProfileForm({
             className="flex items-center gap-2 py-3"
           >
             <Briefcase className="w-4 h-4" />
-            <span className="hidden sm:inline">{t.profile.tabs.professional}</span>
+            <span className="hidden sm:inline">
+              {t.profile.tabs.professional}
+            </span>
             <span className="sm:hidden">Work</span>
           </TabsTrigger>
           <TabsTrigger
@@ -117,7 +120,9 @@ export function ProfileForm({
             className="flex items-center gap-2 py-3"
           >
             <Calendar className="w-4 h-4" />
-            <span className="hidden sm:inline">{t.profile.tabs.availability}</span>
+            <span className="hidden sm:inline">
+              {t.profile.tabs.availability}
+            </span>
             <span className="sm:hidden">Hours</span>
           </TabsTrigger>
         </TabsList>
@@ -132,7 +137,9 @@ export function ProfileForm({
                     <User className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                   </div>
                   <div>
-                    <CardTitle className="text-xl">{t.profile.basic.title}</CardTitle>
+                    <CardTitle className="text-xl">
+                      {t.profile.basic.title}
+                    </CardTitle>
                     <CardDescription>{t.profile.basic.desc}</CardDescription>
                   </div>
                 </div>
@@ -203,7 +210,11 @@ export function ProfileForm({
                     <Briefcase className="w-4 h-4 text-muted-foreground" />
                     {t.profile.basic.department}
                   </Label>
-                  <input type="hidden" name="department_id" value={departmentId ?? ""} />
+                  <input
+                    type="hidden"
+                    name="department_id"
+                    value={departmentId ?? ""}
+                  />
                   <Select
                     value={departmentId ?? "none"}
                     onValueChange={(value) =>
@@ -211,10 +222,14 @@ export function ProfileForm({
                     }
                   >
                     <SelectTrigger className="w-full h-11">
-                      <SelectValue placeholder={t.profile.basic.departmentPlaceholder} />
+                      <SelectValue
+                        placeholder={t.profile.basic.departmentPlaceholder}
+                      />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">{t.profile.basic.departmentNone}</SelectItem>
+                      <SelectItem value="none">
+                        {t.profile.basic.departmentNone}
+                      </SelectItem>
                       {departments.map((dept) => (
                         <SelectItem key={dept.id} value={dept.id}>
                           {dept.name}
@@ -390,7 +405,9 @@ export function ProfileForm({
               <div className="space-y-4">
                 <div className="flex items-center gap-2 pb-2 border-b">
                   <div className="w-1 h-6 bg-accent rounded-full" />
-                  <h3 className="text-lg font-semibold">{t.profile.professional.skills}</h3>
+                  <h3 className="text-lg font-semibold">
+                    {t.profile.professional.skills}
+                  </h3>
                 </div>
                 <SkillsManager profileId={profile.id} />
               </div>
@@ -398,17 +415,27 @@ export function ProfileForm({
               <div className="space-y-4">
                 <div className="flex items-center gap-2 pb-2 border-b">
                   <div className="w-1 h-6 bg-accent rounded-full" />
-                  <h3 className="text-lg font-semibold">{t.profile.professional.workExperience}</h3>
+                  <h3 className="text-lg font-semibold">
+                    {t.profile.professional.workExperience}
+                  </h3>
                 </div>
-                <ExperienceManager profileId={profile.id} initialExperiences={initialExperiences} />
+                <ExperienceManager
+                  profileId={profile.id}
+                  initialExperiences={initialExperiences}
+                />
               </div>
 
               <div className="space-y-4">
                 <div className="flex items-center gap-2 pb-2 border-b">
                   <div className="w-1 h-6 bg-accent rounded-full" />
-                  <h3 className="text-lg font-semibold">{t.profile.professional.education}</h3>
+                  <h3 className="text-lg font-semibold">
+                    {t.profile.professional.education}
+                  </h3>
                 </div>
-                <EducationManager profileId={profile.id} initialEducations={initialEducations} />
+                <EducationManager
+                  profileId={profile.id}
+                  initialEducations={initialEducations}
+                />
               </div>
             </CardContent>
           </Card>

@@ -1,11 +1,17 @@
-
 import { requireAuth, getCurrentProfile } from "@/lib/auth/server-auth";
 import { ProfileForm } from "@/components/profile/profile-form";
 import { ErrorDisplay } from "@/components/error-display";
 import { ProfileHeader } from "@/components/profile/ProfileHeader";
-import { getAvailabilityNextSixMonths, upsertAvailabilityMonthAndNotesAction } from "@/app/actions/availability";
+import {
+  getAvailabilityNextSixMonths,
+  upsertAvailabilityMonthAndNotesAction,
+} from "@/app/actions/availability";
 import { AvailabilityManagerClient } from "@/components/availability/AvailabilityManagerClient";
-import { getExperiences, getEducations, getPrimaryDepartment } from "@/app/actions/profile";
+import {
+  getExperiences,
+  getEducations,
+  getPrimaryDepartment,
+} from "@/app/actions/profile";
 import { getAllDepartmentsBasic } from "@/app/actions/departments";
 
 export default async function ProfilePage() {
@@ -22,7 +28,13 @@ export default async function ProfilePage() {
   }
 
   // Fetch all data in parallel
-  const [availability, experiences, educations, departments, primaryDepartment] = await Promise.all([
+  const [
+    availability,
+    experiences,
+    educations,
+    departments,
+    primaryDepartment,
+  ] = await Promise.all([
     getAvailabilityNextSixMonths(profile.id),
     getExperiences(profile.id),
     getEducations(profile.id),
@@ -41,8 +53,8 @@ export default async function ProfilePage() {
   return (
     <div className="space-y-8 pb-12">
       <ProfileHeader />
-      <ProfileForm 
-        profile={profile} 
+      <ProfileForm
+        profile={profile}
         availabilityContent={availabilityContent}
         initialExperiences={experiences}
         initialEducations={educations}

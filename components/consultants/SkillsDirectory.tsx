@@ -49,35 +49,32 @@ export function SkillsDirectory({ skills }: { skills: SkillDirectoryItem[] }) {
 
   const sortedSkills = useMemo(
     () => sortSkills(skills, sortBy),
-    [skills, sortBy]
+    [skills, sortBy],
   );
 
   const skillsCountLabel = t.consultants.skillsFound.replace(
     "{count}",
-    String(skills.length)
+    String(skills.length),
   );
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">
-          {skillsCountLabel}
-        </p>
+        <p className="text-sm text-muted-foreground">{skillsCountLabel}</p>
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">
             {t.consultants.orderBy}
           </span>
-          <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortKey)}>
+          <Select
+            value={sortBy}
+            onValueChange={(value) => setSortBy(value as SortKey)}
+          >
             <SelectTrigger className="w-[220px]">
               <SelectValue placeholder={t.consultants.orderBy} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="alpha">
-                {t.consultants.orderAlpha}
-              </SelectItem>
-              <SelectItem value="count">
-                {t.consultants.orderCount}
-              </SelectItem>
+              <SelectItem value="alpha">{t.consultants.orderAlpha}</SelectItem>
+              <SelectItem value="count">{t.consultants.orderCount}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -106,7 +103,9 @@ export function SkillsDirectory({ skills }: { skills: SkillDirectoryItem[] }) {
                 {sortedSkills.map((skill, index) => (
                   <TableRow
                     key={skill.id}
-                    className={index % 2 === 0 ? "bg-background" : "bg-muted/20"}
+                    className={
+                      index % 2 === 0 ? "bg-background" : "bg-muted/20"
+                    }
                   >
                     <TableCell className="font-medium">
                       <Link

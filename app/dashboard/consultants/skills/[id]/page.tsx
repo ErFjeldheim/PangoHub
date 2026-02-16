@@ -23,15 +23,22 @@ interface SkillDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
-export default function SkillDetailPage({
-  params,
-}: SkillDetailPageProps) {
+export default function SkillDetailPage({ params }: SkillDetailPageProps) {
   const { id } = use(params);
   const { t } = useLanguage();
   const [skill, setSkill] = useState<SkillPublic | null>(null);
-  const [consultants, setConsultants] = useState<
-    { consultant: { id: string; first_name: string; last_name: string; title: string | null; availability_status: string | null; display_name: string }; proficiency: number; years: number }
-  >([]);
+  const [consultants, setConsultants] = useState<{
+    consultant: {
+      id: string;
+      first_name: string;
+      last_name: string;
+      title: string | null;
+      availability_status: string | null;
+      display_name: string;
+    };
+    proficiency: number;
+    years: number;
+  }>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -135,7 +142,8 @@ export default function SkillDetailPage({
                         href={`/dashboard/consultants/${entry.consultant.id}`}
                         className="text-primary hover:underline"
                       >
-                        {entry.consultant.first_name} {entry.consultant.last_name}
+                        {entry.consultant.first_name}{" "}
+                        {entry.consultant.last_name}
                       </Link>
                     </TableCell>
                     <TableCell>
@@ -148,11 +156,15 @@ export default function SkillDetailPage({
                     </TableCell>
                     <TableCell>
                       <AvailabilityBadge
-                        status={entry.consultant.availability_status ?? undefined}
+                        status={
+                          entry.consultant.availability_status ?? undefined
+                        }
                       />
                     </TableCell>
                     <TableCell className="text-right">
-                      <Link href={`/dashboard/consultants/${entry.consultant.id}`}>
+                      <Link
+                        href={`/dashboard/consultants/${entry.consultant.id}`}
+                      >
                         <Button variant="ghost" size="sm">
                           {t.consultants.viewProfile}
                         </Button>
