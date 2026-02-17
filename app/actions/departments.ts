@@ -2,6 +2,7 @@
 
 import { createServerClient } from "@/lib/pocketbase-server";
 import { revalidatePath } from "next/cache";
+import { requireAdmin } from "@/lib/auth/server-auth";
 import { DepartmentDetails } from "@/types/department";
 import { Department, User, ProfileDepartment, AvailabilityMonth } from "@/types/pocketbase";
 
@@ -69,6 +70,7 @@ export async function getDepartments() {
 }
 
 export async function createDepartment(name: string, description: string) {
+  await requireAdmin();
   const pb = await createServerClient();
   try {
       const data = await pb.collection("departments").create({ name, description });
@@ -89,6 +91,7 @@ export async function updateDepartment(
     leader_profile_id: string | null;
   }
 ) {
+  await requireAdmin();
   const pb = await createServerClient();
   try {
       const data = await pb.collection("departments").update(id, {
@@ -107,6 +110,7 @@ export async function updateDepartment(
 }
 
 export async function deleteDepartment(id: string) {
+  await requireAdmin();
   const pb = await createServerClient();
   try {
       await pb.collection("departments").delete(id);
@@ -123,6 +127,7 @@ export async function addConsultantToDepartment(
   departmentId: string,
   profileId: string
 ) {
+  await requireAdmin();
   const pb = await createServerClient();
   try {
       await pb.collection("profile_departments").create({
@@ -143,6 +148,7 @@ export async function removeConsultantFromDepartment(
   departmentId: string,
   profileId: string
 ) {
+  await requireAdmin();
   const pb = await createServerClient();
   try {
       const record = await pb.collection("profile_departments").getFirstListItem(`department="${departmentId}" && user="${profileId}"`);
@@ -268,6 +274,7 @@ export async function assignDepartmentLeader(
   departmentId: string,
   leaderProfileId: string | null
 ) {
+  await requireAdmin();
   const pb = await createServerClient();
   try {
       await pb.collection("departments").update(departmentId, {

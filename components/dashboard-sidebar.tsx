@@ -19,7 +19,6 @@ import {
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { createClient } from "@/lib/pocketbase";
 import type { User as PBUser } from "@/types/pocketbase";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
@@ -52,13 +51,10 @@ export function SidebarContent({
 }: SidebarContentProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const pb = createClient();
   const { t } = useLanguage();
 
   const handleSignOut = async () => {
-    pb.authStore.clear();
-    document.cookie =
-      "pb_auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    await fetch("/api/auth/logout", { method: "POST" });
     router.push("/auth/login");
   };
 

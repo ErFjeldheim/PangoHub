@@ -2,6 +2,7 @@
 
 import { createServerClient } from "@/lib/pocketbase-server";
 import { notFound } from "next/navigation";
+import { mapUserToConsultant, computeExperienceYears } from "@/lib/utils/consultant";
 import type {
   Consultant,
   Skill,
@@ -25,38 +26,12 @@ function calculateStatus(available: number, committed: number): string {
   return "available";
 }
 
-function mapUserToConsultant(
-  u: User,
-  deptName?: string,
-  status?: string,
-): Consultant {
-  return {
-    id: u.id,
-    first_name: u.first_name,
-    last_name: u.last_name,
-    title: u.title || null,
-    bio: u.bio || null,
-    phone: u.phone || null,
-    location: u.location || null,
-    linkedin_url: u.linkedin_url || null,
-    github_url: u.github_url || null,
-    portfolio_url: u.portfolio_url || null,
-    created_at: u.created,
-    updated_at: u.updated,
-    display_name: u.display_name || `${u.first_name} ${u.last_name}`,
-    email: u.email,
-    availability_status: (status as any) || null,
-    experience_years: null,
-    primary_department: deptName || null,
-  };
-}
-
 export async function searchConsultants(query: string): Promise<Consultant[]> {
   const pb = await createServerClient();
 
   let filter = "";
   if (query && query.trim()) {
-    const q = query.trim();
+    const q = query.trim().replace(/["\\]/g, "");
     filter = `first_name ~ "${q}" || last_name ~ "${q}" || email ~ "${q}"`;
   }
 
@@ -85,8 +60,30 @@ export async function searchConsultants(query: string): Promise<Consultant[]> {
     console.error("Failed to fetch availability for search:", e);
   }
 
+  // Batch-fetch all experiences in a single query, then group by user
+  const experiencesByUser = new Map<string, Experience[]>();
+  try {
+    const userIds = users.map(u => u.id);
+    const expFilter = userIds.map(id => `user="${id}"`).join(" || ");
+    const allExps = await pb.collection("experiences").getFullList<Experience>({
+      filter: expFilter,
+      fields: "user,start_date,end_date",
+    });
+    allExps.forEach(e => {
+      if (!experiencesByUser.has(e.user)) experiencesByUser.set(e.user, []);
+      experiencesByUser.get(e.user)!.push(e);
+    });
+  } catch (e) {
+    console.error("Failed to fetch experiences for search:", e);
+  }
+
   return users.map((u) =>
-    mapUserToConsultant(u, undefined, availabilityMap.get(u.id)),
+    mapUserToConsultant(
+      u,
+      undefined,
+      availabilityMap.get(u.id),
+      computeExperienceYears(experiencesByUser.get(u.id) || []),
+    ),
   );
 }
 

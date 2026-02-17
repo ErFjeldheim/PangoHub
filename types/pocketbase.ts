@@ -110,7 +110,7 @@ export interface AvailabilityMonth extends BaseRecord {
     month: string;
     hours_available: number;
     hours_committed?: number;
-    status?: 'available' | 'busy' | 'partial'; // Enum equivalent
+    status?: 'available' | 'busy' | 'partly' | 'unavailable'; // Enum equivalent
     notes?: string;
 }
 

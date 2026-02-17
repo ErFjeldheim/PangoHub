@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { createServerClient } from "@/lib/pocketbase-server";
 import {
   Experience,
@@ -250,4 +252,20 @@ export async function deleteExperience(id: string) {
     console.error("deleteExperience error:", e);
     throw new Error(e.message);
   }
+}
+
+export async function deleteMyAccount() {
+  const uid = await getAuthUserId();
+  const pb = await createServerClient();
+
+  try {
+    await pb.collection("users").delete(uid);
+  } catch (err) {
+    const e = err as Error;
+    throw new Error(e.message || "Failed to delete account.");
+  }
+
+  const cookieStore = await cookies();
+  cookieStore.delete("pb_auth");
+  redirect("/auth/login");
 }

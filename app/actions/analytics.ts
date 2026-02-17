@@ -44,7 +44,7 @@ export async function getAnalyticsStats(): Promise<AnalyticsStats> {
     if (!status) {
         if (r.hours_available <= 0) status = "unavailable";
         else if ((r.hours_committed || 0) >= r.hours_available) status = "busy";
-        else if ((r.hours_committed || 0) > 0) status = "partial";
+        else if ((r.hours_committed || 0) > 0) status = "partly";
         else status = "available";
     }
     userStatusMap.set(r.user, status);
@@ -60,7 +60,7 @@ export async function getAnalyticsStats(): Promise<AnalyticsStats> {
       } else {
           if (status === 'available') availableCount++;
           else if (status === 'busy') busyCount++;
-          else if (status === 'partial' || status === 'partly') partlyCount++;
+          else if (status === 'partly') partlyCount++;
           else if (status === 'unavailable') unavailableCount++;
       }
   });

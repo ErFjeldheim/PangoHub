@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useState } from "react";
-import { createClient } from "@/lib/pocketbase";
+import { deleteMyAccount } from "@/app/actions/profile";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,7 +14,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { useTheme } from "next-themes";
 import { Globe, Moon, Sun } from "lucide-react";
@@ -33,8 +32,6 @@ export function SettingsForm({ profile }: SettingsFormProps) {
   const [email, setEmail] = useState(profile.email || "");
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const router = useRouter();
-  const pb = createClient();
   const { t, language, setLanguage } = useLanguage();
   const { theme, setTheme } = useTheme();
 
@@ -43,8 +40,15 @@ export function SettingsForm({ profile }: SettingsFormProps) {
     setIsLoading(true);
 
     try {
-      await pb.collection("users").requestEmailChange(email);
-
+      const res = await fetch("/api/auth/request-email-change", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newEmail: email }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to update email");
+      }
       toast.success(t.settings.messages.emailRequested, {
         description: t.settings.messages.emailRequestedDesc,
       });
@@ -62,8 +66,15 @@ export function SettingsForm({ profile }: SettingsFormProps) {
     setIsLoading(true);
 
     try {
-      await pb.collection("users").requestPasswordReset(profile.email);
-
+      const res = await fetch("/api/auth/request-password-reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: profile.email }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to send password reset");
+      }
       toast.success(t.settings.messages.passwordResetSent, {
         description: t.settings.messages.passwordResetDesc,
       });
@@ -78,24 +89,14 @@ export function SettingsForm({ profile }: SettingsFormProps) {
   };
 
   const handleDeleteAccount = async () => {
-    if (
-      !confirm(
-        t.settings.confirmDelete
-      )
-    ) {
+    if (!confirm(t.settings.confirmDelete)) {
       return;
     }
 
     setIsDeleting(true);
 
     try {
-      if (pb.authStore.record) {
-          await pb.collection("users").delete(pb.authStore.record.id);
-          pb.authStore.clear();
-          document.cookie = "pb_auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-          router.push("/auth/login");
-      }
-
+      await deleteMyAccount();
       toast.success(t.settings.messages.accountDeleted);
     } catch (err) {
       const error = err as Error;
@@ -103,7 +104,6 @@ export function SettingsForm({ profile }: SettingsFormProps) {
         description: error.message || "Failed to delete account",
       });
     } finally {
-
       setIsDeleting(false);
     }
   };

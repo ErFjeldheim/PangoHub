@@ -2,7 +2,7 @@
 
 import { createServerClient } from "@/lib/pocketbase-server";
 import { createAdminClient } from "@/lib/pocketbase-admin";
-import { createHash } from "crypto";
+import { createHash, randomBytes } from "crypto";
 import { Invitation, User } from "@/types/pocketbase";
 import { sendInvitationEmail, sendWelcomeEmail } from "@/lib/mail";
 
@@ -15,7 +15,7 @@ export async function createInvitation(
   if (!user) throw new Error("Not authenticated");
 
   const cleanEmail = email.trim();
-  const token = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  const token = randomBytes(32).toString("hex");
   const tokenHash = createHash("sha256").update(token).digest("hex");
 
   const expiresAt = new Date();

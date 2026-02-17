@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import PocketBase from 'pocketbase';
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const response = NextResponse.next();
-  const pb = new PocketBase('https://db.pangohub.fjelldata.com');
+  const pb = new PocketBase(process.env.NEXT_PUBLIC_POCKETBASE_URL || 'https://db.pangohub.fjelldata.com');
 
   const authCookie = request.cookies.get('pb_auth');
   if (authCookie) {
@@ -15,7 +15,7 @@ export async function proxy(request: NextRequest) {
     if (pb.authStore.isValid) {
       await pb.collection('users').authRefresh();
       
-      const cookieString = pb.authStore.exportToCookie({ httpOnly: false });
+      const cookieString = pb.authStore.exportToCookie({ httpOnly: true });
       const match = cookieString.match(/pb_auth=([^;]+)/);
       
       if (match) {
@@ -23,7 +23,7 @@ export async function proxy(request: NextRequest) {
             path: '/',
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
-            httpOnly: false
+            httpOnly: true
         });
       }
     }

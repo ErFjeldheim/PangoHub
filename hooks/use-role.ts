@@ -1,26 +1,32 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { createClient } from "@/lib/pocketbase"
 import { User } from "@/types/pocketbase"
 
 export function useRole() {
   const [profile, setProfile] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const pb = createClient()
 
   useEffect(() => {
-    setProfile(pb.authStore.record as User | null)
-    setIsLoading(false)
-
-    const unsubscribe = pb.authStore.onChange((token, model) => {
-        setProfile(model as User | null)
-    })
-
-    return () => {
-        unsubscribe()
+    const fetchProfile = async () => {
+      try {
+        const res = await fetch("/api/auth/me")
+        if (!res.ok) {
+          setProfile(null)
+          return
+        }
+        const data = await res.json()
+        setProfile(data.user ?? null)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load profile")
+        setProfile(null)
+      } finally {
+        setIsLoading(false)
+      }
     }
+
+    fetchProfile()
   }, [])
 
   const isAdmin = profile?.role === "admin"

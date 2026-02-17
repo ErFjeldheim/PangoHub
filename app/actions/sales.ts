@@ -3,7 +3,8 @@
 import { createServerClient } from "@/lib/pocketbase-server";
 import { revalidatePath } from "next/cache";
 import type { Project, ProfileSkill, Skill, User, AvailabilityMonth, ProfileDepartment, Department } from "@/types/pocketbase";
-import { Consultant } from "@/types/consultant";
+import type { Consultant } from "@/types/consultant";
+import { mapUserToConsultant } from "@/lib/utils/consultant";
 import { requireSalesAccess } from "@/lib/auth/server-auth";
 import { PROJECT_TEMPLATES, HOURLY_RATE } from "@/lib/sales/templates";
 
@@ -35,25 +36,32 @@ export async function getSalesLeads() {
     requestKey: null,
   });
 
-  const enrichedLeads = await Promise.all(leads.map(async (lead) => {
-    const hours = await pb.collection("project_department_hours").getFullList({
-      filter: `project="${lead.id}"`,
-      requestKey: null,
-    });
-    
-    let totalHours = lead.hours_required || 0;
-    if (totalHours === 0 && hours.length > 0) {
-        totalHours = hours.reduce((acc, curr) => acc + (curr.hours_required || 0), 0);
-    }
+  if (leads.length === 0) return [];
 
+  // Fetch all department hours for all leads in a single query (no N+1)
+  const leadIds = leads.map(l => l.id);
+  const allHours = await pb.collection("project_department_hours").getFullList({
+    filter: leadIds.map(id => `project="${id}"`).join(" || "),
+    requestKey: null,
+  });
+
+  // Group hours by project id
+  const hoursByProject = new Map<string, number>();
+  for (const h of allHours) {
+    hoursByProject.set(h.project, (hoursByProject.get(h.project) || 0) + (h.hours_required || 0));
+  }
+
+  return leads.map(lead => {
+    let totalHours = lead.hours_required || 0;
+    if (totalHours === 0) {
+      totalHours = hoursByProject.get(lead.id) || 0;
+    }
     return {
       ...lead,
       totalHours,
-      totalPrice: totalHours * HOURLY_RATE
+      totalPrice: totalHours * HOURLY_RATE,
     };
-  }));
-
-  return enrichedLeads;
+  });
 }
 
 export async function createSalesLeadFromTemplate(data: {
@@ -309,80 +317,77 @@ export async function findMatchingConsultants(
   await requireSalesAccess();
   const pb = await createServerClient();
 
-  const users = await pb.collection("users").getFullList<User>({
-      sort: '-id'
-  });
-  const userSkills = await pb.collection("profile_skills").getFullList<ProfileSkill>({
-      expand: "skill"
-  });
+  const users = await pb.collection("users").getFullList<User>({ sort: "first_name" });
+
+  // Only fetch profile_skills that match the required skill names (pre-filter)
+  let userSkills: ProfileSkill[] = [];
+  if (requiredSkills.length > 0) {
+    const safeSkills = requiredSkills.map(s => s.replace(/["\\]/g, ""));
+    const skillFilter = safeSkills.map(s => `skill.name="${s}"`).join(" || ");
+    userSkills = await pb.collection("profile_skills").getFullList<ProfileSkill>({
+      filter: skillFilter,
+      expand: "skill",
+    });
+  }
+
   const userDepts = await pb.collection("profile_departments").getFullList<ProfileDepartment>({
-      expand: "department"
+    expand: "department",
   });
 
   const targetMonth = startDate ? startDate.substring(0, 7) : new Date().toISOString().substring(0, 7);
-  
   const availabilityRecords = await pb.collection("availability_months").getFullList<AvailabilityMonth>({
-      filter: `month ~ "${targetMonth}"`
+    filter: `month ~ "${targetMonth}"`,
   });
   const availabilityMap = new Map<string, AvailabilityMonth>();
   availabilityRecords.forEach(r => availabilityMap.set(r.user, r));
 
+  // Build a per-user skill set from the pre-filtered results
+  const userSkillMap = new Map<string, string[]>();
+  userSkills.forEach(ps => {
+    const skillName = (ps.expand?.skill as Skill)?.name;
+    if (!skillName) return;
+    if (!userSkillMap.has(ps.user)) userSkillMap.set(ps.user, []);
+    userSkillMap.get(ps.user)!.push(skillName);
+  });
+
   const results: MatchResult[] = users.map(user => {
-      const mySkills = userSkills.filter(ps => ps.user === user.id).map(ps => (ps.expand?.skill as Skill)?.name);
-      
-      const myDepts = userDepts.filter(pd => pd.user === user.id);
-      const primaryDept = myDepts.find(pd => pd.is_primary) || myDepts[0];
-      const deptName = (primaryDept?.expand?.department as Department)?.name || null;
+    const mySkills = userSkillMap.get(user.id) || [];
 
-      const matched = requiredSkills.filter(req => mySkills.includes(req));
-      const missing = requiredSkills.filter(req => !mySkills.includes(req));
-      
-      let score = 0;
-      if (requiredSkills.length > 0) {
-          score = (matched.length / requiredSkills.length) * 100;
-      } else {
-          score = 100;
-      }
+    const myDepts = userDepts.filter(pd => pd.user === user.id);
+    const primaryDept = myDepts.find(pd => pd.is_primary) || myDepts[0];
+    const deptName = (primaryDept?.expand?.department as Department)?.name || null;
 
-      const avail = availabilityMap.get(user.id);
-      const hours = avail?.hours_available || 0;
-      const committed = avail?.hours_committed || 0;
-      const hoursFree = hours - committed;
+    const matched = requiredSkills.filter(req => mySkills.includes(req));
+    const missing = requiredSkills.filter(req => !mySkills.includes(req));
 
-      let status = avail?.status || "unknown";
-      if (!avail?.status && avail) {
-          if (hours <= 0) status = "unavailable";
-          else if (committed >= hours) status = "busy";
-          else if (committed > 0) status = "partial";
-          else status = "available";
-      }
+    let score = requiredSkills.length > 0
+      ? (matched.length / requiredSkills.length) * 100
+      : 100;
 
-      if (status === 'busy' || (status === 'unknown' && hoursFree <= 0)) {
-          score = score * 0.5;
-      }
+    const avail = availabilityMap.get(user.id);
+    const hours = avail?.hours_available || 0;
+    const committed = avail?.hours_committed || 0;
+    const hoursFree = hours - committed;
 
-      return {
-          consultant: {
-              id: user.id,
-              first_name: user.first_name,
-              last_name: user.last_name,
-              display_name: user.display_name || `${user.first_name} ${user.last_name}`,
-              email: user.email,
-              title: user.title || null,
-              bio: null, phone: null, location: null, linkedin_url: null, github_url: null, portfolio_url: null,
-              created_at: user.created, updated_at: user.updated,
-              availability_status: status as any,
-              experience_years: null,
-              primary_department: deptName
-          },
-          score: Math.round(score),
-          matchedSkills: matched,
-          missingSkills: missing,
-          availability: {
-              status: status,
-              hoursAvailable: hoursFree
-          }
-      };
+    let status: string = avail?.status || "unknown";
+    if (!avail?.status && avail) {
+      if (hours <= 0) status = "unavailable";
+      else if (committed >= hours) status = "busy";
+      else if (committed > 0) status = "partly";
+      else status = "available";
+    }
+
+    if (status === 'busy' || (status === 'unknown' && hoursFree <= 0)) {
+      score *= 0.5;
+    }
+
+    return {
+      consultant: mapUserToConsultant(user, deptName ?? undefined, status),
+      score: Math.round(score),
+      matchedSkills: matched,
+      missingSkills: missing,
+      availability: { status, hoursAvailable: hoursFree },
+    };
   });
 
   return results.sort((a, b) => b.score - a.score);
@@ -431,6 +436,21 @@ export type TeamSlot = {
     hours: number;
 };
 
+/** Build a consultant object from a user + supporting lookup maps. */
+function buildConsultantFromMaps(
+    u: User,
+    userDepts: ProfileDepartment[],
+    availRecords: AvailabilityMonth[],
+    fallbackDept?: string,
+): Consultant {
+    const avail = availRecords.find(a => a.user === u.id);
+    const primaryDept = userDepts.filter(pd => pd.user === u.id).find(pd => pd.is_primary)
+        || userDepts.find(pd => pd.user === u.id);
+    const deptName = (primaryDept?.expand?.department as Department)?.name || fallbackDept || null;
+    const status = avail?.status || "available";
+    return mapUserToConsultant(u, deptName ?? undefined, status);
+}
+
 export async function getSuggestedTeam(projectId: string): Promise<TeamSlot[]> {
     await requireSalesAccess();
     const pb = await createServerClient();
@@ -438,10 +458,20 @@ export async function getSuggestedTeam(projectId: string): Promise<TeamSlot[]> {
     
     const month = project.start_date ? project.start_date.substring(0, 7) : new Date().toISOString().substring(0, 7);
     const users = await pb.collection("users").getFullList<User>();
+    // Fetch all profile_skills with expanded skill name
     const userSkills = await pb.collection("profile_skills").getFullList<ProfileSkill>({ expand: "skill" });
     const userDepts = await pb.collection("profile_departments").getFullList<ProfileDepartment>({ expand: "department" });
     const availRecords = await pb.collection("availability_months").getFullList<AvailabilityMonth>({
-        filter: `month ~ "${month}"`
+        filter: `month ~ "${month}"`,
+    });
+
+    // Pre-build a per-user skill map for O(1) lookup in the greedy loop
+    const userSkillMap = new Map<string, string[]>();
+    userSkills.forEach(ps => {
+        const skillName = (ps.expand?.skill as Skill)?.name;
+        if (!skillName) return;
+        if (!userSkillMap.has(ps.user)) userSkillMap.set(ps.user, []);
+        userSkillMap.get(ps.user)!.push(skillName);
     });
 
     const globalUsedUserIds = new Set<string>();
@@ -466,7 +496,7 @@ export async function getSuggestedTeam(projectId: string): Promise<TeamSlot[]> {
                 const candidates = users.filter(u => !globalUsedUserIds.has(u.id));
 
                 for (const u of candidates) {
-                    const mySkills = userSkills.filter(ps => ps.user === u.id).map(ps => (ps.expand?.skill as Skill)?.name);
+                    const mySkills = userSkillMap.get(u.id) || [];
                     const matchedForThisSlot = remainingSkills.filter(s => mySkills.includes(s));
                     
                     if (matchedForThisSlot.length === 0) continue;
@@ -483,25 +513,11 @@ export async function getSuggestedTeam(projectId: string): Promise<TeamSlot[]> {
                 }
 
                 if (bestCandidate) {
-                    const avail = availRecords.find(a => a.user === bestCandidate!.id);
                     globalUsedUserIds.add(bestCandidate.id);
-                    const primaryDept = userDepts.filter(pd => pd.user === bestCandidate!.id).find(pd => pd.is_primary) || userDepts.find(pd => pd.user === bestCandidate!.id);
                     slotMembers.push({
-                        consultant: {
-                            id: bestCandidate.id,
-                            first_name: bestCandidate.first_name,
-                            last_name: bestCandidate.last_name,
-                            display_name: bestCandidate.display_name || `${bestCandidate.first_name} ${bestCandidate.last_name}`,
-                            email: bestCandidate.email,
-                            title: bestCandidate.title || null,
-                            bio: null, phone: null, location: null, linkedin_url: null, github_url: null, portfolio_url: null,
-                            created_at: bestCandidate.created, updated_at: bestCandidate.updated,
-                            availability_status: (avail?.status as any) || "available",
-                            experience_years: null,
-                            primary_department: (primaryDept?.expand?.department as Department)?.name || "Mixed"
-                        },
+                        consultant: buildConsultantFromMaps(bestCandidate, userDepts, availRecords, "Mixed"),
                         coveredSkills: bestCovered,
-                        matchScore: Math.round(bestScore)
+                        matchScore: Math.round(bestScore),
                     });
                     remainingSkills = remainingSkills.filter(s => !bestCovered.includes(s));
                 } else {
@@ -514,7 +530,7 @@ export async function getSuggestedTeam(projectId: string): Promise<TeamSlot[]> {
                 department: "Project",
                 members: slotMembers,
                 missingSkills: remainingSkills,
-                hours: project.hours_required || 0
+                hours: project.hours_required || 0,
             }];
         }
 
@@ -535,7 +551,7 @@ export async function getSuggestedTeam(projectId: string): Promise<TeamSlot[]> {
                     const inDept = userDepts.some(pd => pd.user === u.id && pd.expand?.department?.name === deptName);
                     if (!inDept) continue;
 
-                    const mySkills = userSkills.filter(ps => ps.user === u.id).map(ps => (ps.expand?.skill as Skill)?.name);
+                    const mySkills = userSkillMap.get(u.id) || [];
                     const matchedForThisSlot = remainingSkills.filter(s => mySkills.includes(s));
                     
                     if (matchedForThisSlot.length === 0) continue;
@@ -552,25 +568,11 @@ export async function getSuggestedTeam(projectId: string): Promise<TeamSlot[]> {
                 }
 
                 if (bestCandidate) {
-                    const avail = availRecords.find(a => a.user === bestCandidate!.id);
                     globalUsedUserIds.add(bestCandidate.id);
-                    const primaryDept = userDepts.filter(pd => pd.user === bestCandidate!.id).find(pd => pd.is_primary) || userDepts.find(pd => pd.user === bestCandidate!.id);
                     slotMembers.push({
-                        consultant: {
-                            id: bestCandidate.id,
-                            first_name: bestCandidate.first_name,
-                            last_name: bestCandidate.last_name,
-                            display_name: bestCandidate.display_name || `${bestCandidate.first_name} ${bestCandidate.last_name}`,
-                            email: bestCandidate.email,
-                            title: bestCandidate.title || null,
-                            bio: null, phone: null, location: null, linkedin_url: null, github_url: null, portfolio_url: null,
-                            created_at: bestCandidate.created, updated_at: bestCandidate.updated,
-                            availability_status: (avail?.status as any) || "available",
-                            experience_years: null,
-                            primary_department: (primaryDept?.expand?.department as Department)?.name || deptName
-                        },
+                        consultant: buildConsultantFromMaps(bestCandidate, userDepts, availRecords, deptName),
                         coveredSkills: bestCovered,
-                        matchScore: Math.round(bestScore)
+                        matchScore: Math.round(bestScore),
                     });
                     remainingSkills = remainingSkills.filter(s => !bestCovered.includes(s));
                 } else {
@@ -583,7 +585,7 @@ export async function getSuggestedTeam(projectId: string): Promise<TeamSlot[]> {
                 department: deptName,
                 members: slotMembers,
                 missingSkills: remainingSkills,
-                hours: d.hours_required || 0
+                hours: d.hours_required || 0,
             });
         }
         return slots;
@@ -608,7 +610,7 @@ export async function getSuggestedTeam(projectId: string): Promise<TeamSlot[]> {
                 const inDept = userDepts.some(pd => pd.user === u.id && pd.expand?.department?.name === deptReq.name);
                 if (!inDept) continue;
 
-                const mySkills = userSkills.filter(ps => ps.user === u.id).map(ps => (ps.expand?.skill as Skill)?.name);
+                const mySkills = userSkillMap.get(u.id) || [];
                 const matchedForThisSlot = remainingSkills.filter(s => mySkills.includes(s));
                 
                 if (matchedForThisSlot.length === 0) continue;
@@ -625,25 +627,11 @@ export async function getSuggestedTeam(projectId: string): Promise<TeamSlot[]> {
             }
 
             if (bestCandidate) {
-                const avail = availRecords.find(a => a.user === bestCandidate!.id);
                 globalUsedUserIds.add(bestCandidate.id);
-                const primaryDept = userDepts.filter(pd => pd.user === bestCandidate!.id).find(pd => pd.is_primary) || userDepts.find(pd => pd.user === bestCandidate!.id);
                 slotMembers.push({
-                    consultant: {
-                        id: bestCandidate.id,
-                        first_name: bestCandidate.first_name,
-                        last_name: bestCandidate.last_name,
-                        display_name: bestCandidate.display_name || `${bestCandidate.first_name} ${bestCandidate.last_name}`,
-                        email: bestCandidate.email,
-                        title: bestCandidate.title || null,
-                        bio: null, phone: null, location: null, linkedin_url: null, github_url: null, portfolio_url: null,
-                        created_at: bestCandidate.created, updated_at: bestCandidate.updated,
-                        availability_status: (avail?.status as any) || "available",
-                        experience_years: null,
-                        primary_department: (primaryDept?.expand?.department as Department)?.name || deptReq.name
-                    },
+                    consultant: buildConsultantFromMaps(bestCandidate, userDepts, availRecords, deptReq.name),
                     coveredSkills: bestCovered,
-                    matchScore: Math.round(bestScore)
+                    matchScore: Math.round(bestScore),
                 });
                 remainingSkills = remainingSkills.filter(s => !bestCovered.includes(s));
             } else {
@@ -656,7 +644,7 @@ export async function getSuggestedTeam(projectId: string): Promise<TeamSlot[]> {
             department: deptReq.name,
             members: slotMembers,
             missingSkills: remainingSkills,
-            hours: deptReq.hours
+            hours: deptReq.hours,
         });
     }
 

@@ -43,7 +43,7 @@ export async function login(
             path: '/',
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
-            httpOnly: false
+            httpOnly: true
         });
     }
   } catch (err) {
