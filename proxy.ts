@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import PocketBase from 'pocketbase';
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const response = NextResponse.next();
   const pb = new PocketBase(process.env.NEXT_PUBLIC_POCKETBASE_URL || 'https://db.pangohub.fjelldata.com');
 

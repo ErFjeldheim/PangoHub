@@ -38,7 +38,7 @@ export default function SkillDetailPage({ params }: SkillDetailPageProps) {
     };
     proficiency: number;
     years: number;
-  }>([]);
+  }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -157,7 +157,7 @@ export default function SkillDetailPage({ params }: SkillDetailPageProps) {
                     <TableCell>
                       <AvailabilityBadge
                         status={
-                          entry.consultant.availability_status ?? undefined
+                          (entry.consultant.availability_status ?? undefined) as import("@/types/consultant").AvailabilityStatus | undefined
                         }
                       />
                     </TableCell>

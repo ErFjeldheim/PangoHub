@@ -1,6 +1,7 @@
 // components/dashboard-sidebar.tsx
 "use client";
 
+import React from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -68,7 +69,15 @@ export function SidebarContent({
   const isConsultantsArea =
     pathname.startsWith("/dashboard/consultants") && !isConsultantsSkills;
 
-  const navBase = [
+  type NavItem = {
+    name: string;
+    href: string;
+    icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+    current: boolean;
+    isSubItem?: boolean;
+  };
+
+  const navBase: NavItem[] = [
     {
       name: t.nav.dashboard,
       href: "/dashboard",
@@ -102,7 +111,7 @@ export function SidebarContent({
     },
   ];
 
-  const navAdmin = isAdmin
+  const navAdmin: NavItem[] = isAdmin
     ? [
         {
           name: t.nav.departments,
@@ -125,7 +134,7 @@ export function SidebarContent({
       ]
     : [];
 
-  const navSales = canAccessSales
+  const navSales: NavItem[] = canAccessSales
     ? [
         {
           name: t.nav.sales,
@@ -136,7 +145,7 @@ export function SidebarContent({
       ]
     : [];
 
-  const navTail = [
+  const navTail: NavItem[] = [
     {
       name: t.nav.settings,
       href: "/dashboard/settings",
