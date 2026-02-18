@@ -43,3 +43,6 @@ next-env.d.ts
 
 # OpenCode
 opencode.json
+
+# KiloCode
+.kilocode/mcp.json
