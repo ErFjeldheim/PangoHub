@@ -46,3 +46,6 @@ opencode.json
 
 # KiloCode
 .kilocode/mcp.json
+
+# VSCode MCP (contains sensitive credentials)
+.vscode/mcp.json
