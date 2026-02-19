@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { createServerClient } from "@/lib/pocketbase-server";
+import { createAdminClient } from "@/lib/pocketbase-admin";
 import {
   Experience,
   Education,
@@ -57,9 +58,11 @@ export async function updateMyProfileAction(formData: FormData): Promise<{ error
     (formData.get("department_id") as string | null)?.trim() || null;
 
   if (departmentId) {
+    // Use admin client to bypass PocketBase API rules for profile_departments
+    const adminPb = await createAdminClient();
     let existing: ProfileDepartment | null = null;
     try {
-      existing = await pb
+      existing = await adminPb
         .collection("profile_departments")
         .getFirstListItem<ProfileDepartment>(
           `user="${uid}" && is_primary=true`,
@@ -71,13 +74,13 @@ export async function updateMyProfileAction(formData: FormData): Promise<{ error
     try {
       if (existing) {
         if (existing.department !== departmentId || !existing.is_primary) {
-          await pb.collection("profile_departments").update(existing.id, {
+          await adminPb.collection("profile_departments").update(existing.id, {
             department: departmentId,
             is_primary: true,
           });
         }
       } else {
-        await pb.collection("profile_departments").create({
+        await adminPb.collection("profile_departments").create({
           department: departmentId,
           user: uid,
           is_primary: true,
@@ -85,16 +88,18 @@ export async function updateMyProfileAction(formData: FormData): Promise<{ error
       }
     } catch (deptErr) {
       console.error("Error saving department:", deptErr);
-      // Continue without failing the whole profile save - department is optional
+      return { error: "Failed to save department. Please try again." };
     }
   } else {
+    // Use admin client to delete department
+    const adminPb = await createAdminClient();
     try {
-      const existing = await pb
+      const existing = await adminPb
         .collection("profile_departments")
         .getFirstListItem<ProfileDepartment>(
           `user="${uid}" && is_primary=true`,
         );
-      await pb.collection("profile_departments").delete(existing.id);
+      await adminPb.collection("profile_departments").delete(existing.id);
     } catch {
       // nothing to remove
     }
