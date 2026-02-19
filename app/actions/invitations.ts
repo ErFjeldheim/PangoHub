@@ -90,13 +90,13 @@ export async function deleteInvitation(id: string) {
 }
 
 export async function verifyInvitation(token: string, email: string) {
-  const pb = await createAdminClient();
   const tokenHash = createHash("sha256").update(token).digest("hex");
   
   // Clean email to handle any potential URL encoding weirdness if it passed through
   const cleanEmail = decodeURIComponent(email).trim();
 
   try {
+      const pb = await createAdminClient();
       const invitation = await pb.collection("invitations").getFirstListItem<Invitation>(
           `email="${cleanEmail}" && token_hash="${tokenHash}" && accepted_at="" && expires_at > @now`
       );

@@ -48,15 +48,20 @@ export default function SignUpPage() {
         return;
       }
 
-      const { invitation, error } = await verifyInvitation(token, emailFromUrl);
+      try {
+        const { invitation, error } = await verifyInvitation(token, emailFromUrl);
 
-      if (error || !invitation) {
-        setError(error?.message || "Invalid or expired invitation");
-        return;
+        if (error || !invitation) {
+          setError(error?.message || "Invalid or expired invitation");
+          return;
+        }
+
+        setInvitation(invitation);
+        setEmail(invitation.email);
+      } catch (err) {
+        console.error("validateInvitation exception:", err);
+        setError("Failed to validate invitation. Please try again or contact support.");
       }
-
-      setInvitation(invitation);
-      setEmail(invitation.email);
     };
 
     validateInvitation();
