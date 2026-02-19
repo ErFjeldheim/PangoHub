@@ -18,8 +18,14 @@ async function getAuthUserId() {
   return user.id;
 }
 
-export async function updateMyProfileAction(formData: FormData) {
-  const uid = await getAuthUserId();
+export async function updateMyProfileAction(formData: FormData): Promise<{ error?: string }> {
+  let uid: string;
+  try {
+    uid = await getAuthUserId();
+  } catch (authErr) {
+    console.error("Auth error:", authErr);
+    return { error: "Not authenticated. Please log in again." };
+  }
 
   const fields = [
     "first_name",
@@ -42,21 +48,27 @@ export async function updateMyProfileAction(formData: FormData) {
   const pb = await createServerClient();
   try {
     await pb.collection("users").update(uid, patch);
-    const departmentId =
-      (formData.get("department_id") as string | null)?.trim() || null;
+  } catch (userUpdateErr) {
+    console.error("Error updating user:", userUpdateErr);
+    return { error: "Failed to update profile. Please try again." };
+  }
 
-    if (departmentId) {
-      let existing: ProfileDepartment | null = null;
-      try {
-        existing = await pb
-          .collection("profile_departments")
-          .getFirstListItem<ProfileDepartment>(
-            `user="${uid}" && is_primary=true`,
-          );
-      } catch {
-        existing = null;
-      }
+  const departmentId =
+    (formData.get("department_id") as string | null)?.trim() || null;
 
+  if (departmentId) {
+    let existing: ProfileDepartment | null = null;
+    try {
+      existing = await pb
+        .collection("profile_departments")
+        .getFirstListItem<ProfileDepartment>(
+          `user="${uid}" && is_primary=true`,
+        );
+    } catch {
+      existing = null;
+    }
+
+    try {
       if (existing) {
         if (existing.department !== departmentId || !existing.is_primary) {
           await pb.collection("profile_departments").update(existing.id, {
@@ -71,24 +83,25 @@ export async function updateMyProfileAction(formData: FormData) {
           is_primary: true,
         });
       }
-    } else {
-      try {
-        const existing = await pb
-          .collection("profile_departments")
-          .getFirstListItem<ProfileDepartment>(
-            `user="${uid}" && is_primary=true`,
-          );
-        await pb.collection("profile_departments").delete(existing.id);
-      } catch {
-        // nothing to remove
-      }
+    } catch (deptErr) {
+      console.error("Error saving department:", deptErr);
+      // Continue without failing the whole profile save - department is optional
     }
-
-    revalidatePath("/dashboard/profile");
-  } catch (err) {
-    const e = err as Error;
-    throw new Error(e.message);
+  } else {
+    try {
+      const existing = await pb
+        .collection("profile_departments")
+        .getFirstListItem<ProfileDepartment>(
+          `user="${uid}" && is_primary=true`,
+        );
+      await pb.collection("profile_departments").delete(existing.id);
+    } catch {
+      // nothing to remove
+    }
   }
+
+  revalidatePath("/dashboard/profile");
+  return {};
 }
 
 export async function getPrimaryDepartment(profileId: string) {

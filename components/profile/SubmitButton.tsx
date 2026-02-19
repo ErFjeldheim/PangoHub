@@ -6,8 +6,15 @@ import { useFormStatus } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Save, Loader2 } from "lucide-react";
 
-export function SubmitButton({ children }: { children: React.ReactNode }) {
-  const { pending } = useFormStatus();
+export function SubmitButton({ 
+  children, 
+  pending: externalPending 
+}: { 
+  children: React.ReactNode;
+  pending?: boolean;
+}) {
+  const { pending: formPending } = useFormStatus();
+  const pending = externalPending ?? formPending;
   return (
     <Button
       type="submit"

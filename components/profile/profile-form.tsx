@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { updateMyProfileAction } from "@/app/actions/profile";
 import { SubmitButton } from "@/components/profile/SubmitButton";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
@@ -60,6 +60,9 @@ export function ProfileForm({
   primaryDepartment,
 }: ProfileFormProps) {
   const { t } = useLanguage();
+  const [isPending, startTransition] = useTransition();
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
   const [formValues, setFormValues] = useState({
     first_name: profile.first_name ?? "",
     last_name: profile.last_name ?? "",
@@ -96,6 +99,20 @@ export function ProfileForm({
       setFormValues((prev) => ({ ...prev, [field]: event.target.value }));
     };
 
+  const handleFormAction = (formData: FormData) => {
+    setSaveError(null);
+    setSaveSuccess(false);
+    startTransition(async () => {
+      const result = await updateMyProfileAction(formData);
+      if (result.error) {
+        setSaveError(result.error);
+      } else {
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 3000);
+      }
+    });
+  };
+
   return (
     <div className="space-y-6">
       <Tabs defaultValue="basic" className="w-full">
@@ -129,7 +146,17 @@ export function ProfileForm({
 
         {/* BASIC */}
         <TabsContent value="basic" className="space-y-6 mt-6">
-          <form action={updateMyProfileAction} className="space-y-6">
+          <form action={handleFormAction} className="space-y-6">
+            {saveError && (
+              <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
+                {saveError}
+              </div>
+            )}
+            {saveSuccess && (
+              <div className="bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-sm p-3 rounded-md">
+                Profile saved successfully!
+              </div>
+            )}
             <Card className="border-2 hover:border-accent/30 transition-colors duration-200">
               <CardHeader className="space-y-3">
                 <div className="flex items-center gap-3">
@@ -378,7 +405,7 @@ export function ProfileForm({
             </Card>
 
             <div className="flex justify-end">
-              <SubmitButton>{t.common.save}</SubmitButton>
+              <SubmitButton pending={isPending}>{t.common.save}</SubmitButton>
             </div>
           </form>
         </TabsContent>
