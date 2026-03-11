@@ -49,7 +49,16 @@ export function LoginForm() {
 
       <SubmitButton />
 
-      <div className="mt-6 text-center text-sm text-muted-foreground">
+      <div className="text-center text-sm">
+        <Link
+          href="/auth/forgot-password"
+          className="text-muted-foreground hover:text-primary hover:underline"
+        >
+          Forgot your password?
+        </Link>
+      </div>
+
+      <div className="mt-2 text-center text-sm text-muted-foreground">
         Need access?{" "}
         <Link
           href="/auth/request-access"

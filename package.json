@@ -7,6 +7,7 @@
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
+    "setup:pocketbase": "node scripts/configure-pocketbase.mjs",
     "types:db": "supabase gen types typescript --db-url \"postgresql://postgres:postgres@localhost:54322/postgres\" > types/supabase.ts"
   },
   "engines": {
