@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid email" }, { status: 400 });
     }
     // Password reset is a public endpoint — no auth needed
-    const pb = new PocketBase(process.env.NEXT_PUBLIC_POCKETBASE_URL || 'https://db.pangohub.fjelldata.com');
+    const pb = new PocketBase(process.env.POCKETBASE_URL || 'https://db.pangohub.fjelldata.com');
     await pb.collection("users").requestPasswordReset(email.trim());
     return NextResponse.json({ ok: true });
   } catch (err) {

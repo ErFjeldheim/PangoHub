@@ -4,7 +4,7 @@ import { TypedPocketBase } from '@/types/pocketbase';
 // Singleton to avoid multiple instances during client-side navigation
 let pb: TypedPocketBase | undefined;
 
-const PB_URL = process.env.NEXT_PUBLIC_POCKETBASE_URL || 'https://db.pangohub.fjelldata.com';
+const PB_URL = process.env.NEXT_PUBLIC_POCKETBASE_URL || process.env.POCKETBASE_URL || 'https://db.pangohub.fjelldata.com';
 
 export const createClient = () => {
   if (typeof window === 'undefined') {
