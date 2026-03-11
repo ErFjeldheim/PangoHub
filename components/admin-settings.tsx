@@ -20,6 +20,7 @@ type Props = {
   initialInvitations: Invitation[];
   setUserRoleAction: (fd: FormData) => Promise<void>;
   deleteInvitationAction: (fd: FormData) => Promise<void>;
+  deleteUserAction: (fd: FormData) => Promise<void>;
 };
 
 export function AdminSettings({
@@ -27,6 +28,7 @@ export function AdminSettings({
   initialInvitations,
   setUserRoleAction,
   deleteInvitationAction,
+  deleteUserAction,
 }: Props) {
   const [users, setUsers] = useOptimistic(initialUsers);
   const [invitations, setInvitations] = useOptimistic(initialInvitations);
@@ -83,6 +85,28 @@ export function AdminSettings({
                       <input type="hidden" name="newRole" value={nextRole} />
                       <Button variant="outline" size="sm" type="submit">
                         {u.is_admin ? "Make Consultant" : "Make Admin"}
+                      </Button>
+                    </form>
+
+                    <form
+                      action={async (fd: FormData) => {
+                        const confirmed = window.confirm(
+                          `Delete account for ${u.display_name || u.email}? This cannot be undone.`
+                        );
+                        if (!confirmed) return;
+                        setUsers((prev) => prev.filter((x) => x.id !== u.id));
+                        await deleteUserAction(fd);
+                      }}
+                    >
+                      <input type="hidden" name="userId" value={u.id} />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        type="submit"
+                        aria-label="Delete user"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </form>
                   </div>

@@ -3,9 +3,10 @@
 
 import { revalidatePath } from "next/cache";
 import { createServerClient } from "@/lib/pocketbase-server";
+import { createAdminClient } from "@/lib/pocketbase-admin";
 import type { AdminUser } from "@/types/admin";
 import type { Invitation } from "@/types/invitation";
-import { requireAdmin } from "@/lib/auth/server-auth";
+import { requireAdmin, getCurrentUser } from "@/lib/auth/server-auth";
 import type { User as PBUser, Invitation as PBInvitation } from "@/types/pocketbase";
 
 function mapToAdminUser(u: PBUser): AdminUser {
@@ -75,6 +76,25 @@ export async function deleteInvitationAction(formData: FormData) {
 
   const invitationId = String(formData.get("invitationId"));
   await pb.collection("invitations").delete(invitationId);
+
+  revalidatePath("/dashboard/settings");
+}
+
+export async function deleteUserAction(formData: FormData) {
+  await requireAdmin();
+
+  const targetUserId = String(formData.get("userId"));
+
+  // Prevent admins from deleting their own account through this action
+  // (self-deletion is handled separately in profile.ts)
+  const currentUser = await getCurrentUser();
+  if (currentUser?.id === targetUserId) {
+    throw new Error("Use account settings to delete your own account.");
+  }
+
+  // Use admin client — regular users cannot delete other users
+  const adminPb = await createAdminClient();
+  await adminPb.collection("users").delete(targetUserId);
 
   revalidatePath("/dashboard/settings");
 }

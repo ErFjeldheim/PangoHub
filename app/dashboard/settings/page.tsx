@@ -7,6 +7,7 @@ import {
   listUsersAndInvites,
   setUserRoleAction,
   deleteInvitationAction,
+  deleteUserAction,
 } from "@/app/actions/admin";
 
 export default async function SettingsPage() {
@@ -28,6 +29,7 @@ export default async function SettingsPage() {
           initialInvitations={adminData.invitations}
           setUserRoleAction={setUserRoleAction}
           deleteInvitationAction={deleteInvitationAction}
+          deleteUserAction={deleteUserAction}
         />
       )}
     </div>
