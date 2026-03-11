@@ -9,7 +9,7 @@
 
 PangoHub (formerly Talent Hub) is a comprehensive platform for managing consultants, projects, and departments. It serves as a centralized system for tracking consultant availability, skills, and project assignments, designed to streamline resource management and talent matching.
 
-The application is currently hosted on **Dokploy** at [pangohub.fjelldata.com](https://pangohub.fjelldata.com).
+The application is currently hosted on **Dokploy** at [pangohub.pangoconsulting.no](https://pangohub.pangoconsulting.no).
 
 ## ✨ Features
 
