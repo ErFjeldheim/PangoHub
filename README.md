@@ -98,7 +98,7 @@ Key collections include:
 
 The application is deployed using **Dokploy** with **Nixpacks**.
 
--   **Production URL**: [https://pangohub.fjelldata.com](https://pangohub.fjelldata.com)
+-   **Production URL**: [https://pangohub.pangoconsulting.no](https://pangohub.pangoconsulting.no)
 -   **Build Command**: `npm run build`
 -   **Start Command**: `npm start`
 
