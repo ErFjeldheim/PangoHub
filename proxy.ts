@@ -4,7 +4,7 @@ import PocketBase from 'pocketbase';
 
 export async function proxy(request: NextRequest) {
   const response = NextResponse.next();
-  const pb = new PocketBase(process.env.POCKETBASE_URL || 'https://db.pangohub.pangoconsulting.no');
+  const pb = new PocketBase(process.env.POCKETBASE_URL || 'https://db.pangohub.fjelldata.com');
 
   const authCookie = request.cookies.get('pb_auth');
   if (authCookie) {

@@ -5,7 +5,7 @@ import { TypedPocketBase } from '@/types/pocketbase';
 // Server-side client helper
 export const createServerClient = async () => {
     const cookieStore = await cookies();
-    const pb = new PocketBase(process.env.POCKETBASE_URL || 'https://db.pangohub.pangoconsulting.no') as TypedPocketBase;
+    const pb = new PocketBase(process.env.POCKETBASE_URL || 'https://db.pangohub.fjelldata.com') as TypedPocketBase;
 
     const authCookie = cookieStore.get('pb_auth');
     

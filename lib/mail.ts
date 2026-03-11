@@ -28,7 +28,7 @@ function getTransporter() {
   });
 }
 
-const FROM = process.env.SMTP_FROM || "noreply@pangohub.pangoconsulting.no";
+const FROM = process.env.SMTP_FROM || "noreply@pangohub.fjelldata.com";
 
 export async function sendInvitationEmail({
   to,

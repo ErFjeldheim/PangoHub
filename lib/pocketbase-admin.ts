@@ -1,7 +1,7 @@
 import PocketBase from 'pocketbase';
 import { TypedPocketBase } from '@/types/pocketbase';
 
-const PB_URL = process.env.POCKETBASE_URL || 'https://db.pangohub.pangoconsulting.no';
+const PB_URL = process.env.POCKETBASE_URL || 'https://db.pangohub.fjelldata.com';
 
 // Module-level cache: reuse the authenticated admin client until the token
 // is within 5 minutes of expiry, then re-authenticate.

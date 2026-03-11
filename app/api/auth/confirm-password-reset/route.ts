@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     }
 
     const pb = new PocketBase(
-      process.env.POCKETBASE_URL || "https://db.pangohub.pangoconsulting.no"
+      process.env.POCKETBASE_URL || "https://db.pangohub.fjelldata.com"
     );
     await pb.collection("users").confirmPasswordReset(token, password, passwordConfirm);
 
